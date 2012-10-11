@@ -21,6 +21,7 @@ install_requires = [
     'pytz==2012d',
     'psycopg2==2.4.5',
     'cdecimal==2.3',
+    'cement==2.0.2',
 ]
 
 tests_require = [
