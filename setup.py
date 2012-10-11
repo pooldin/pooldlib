@@ -25,6 +25,9 @@ install_requires = [
 ]
 
 tests_require = [
+    'nose==1.2.1',
+    'mock==1.0.0',
+    'coverage==3.5.2',
 ]
 
 entry_points = dict()
@@ -49,5 +52,6 @@ setup(name='pooldlib',
                    'Development Status :: 4 - Beta',
                    'Intended Audience :: Poold.in',
       ],
-      scripts=[],
+      scripts=[
+      ],
       )
