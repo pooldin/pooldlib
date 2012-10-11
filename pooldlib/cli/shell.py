@@ -1,27 +1,32 @@
-from cement.core.controller import CementBaseController, expose
-
-description = "Opens a bpython, ipython or python interactive shell."
-
-epilog = """By default, the first interpreter found is used. The order of
-look up is bpython, ipython, python. You can specify a specific interpreter as
-a subcommand or as a flag.
-"""
-
-args = [
-    (['-b', '--bpython'], dict(action='store_true', help='Run bpython shell')),
-    (['-i', '--ipython'], dict(action='store_true', help='Run ipython shell')),
-    (['-p', '--python'], dict(action='store_true', help='Run python shell'))
-]
+from cement.core import controller
 
 
-class ShellController(CementBaseController):
+class ShellController(controller.CementBaseController):
     class Meta:
         label = 'shell'
-        description = description
-        epilog = epilog
-        arguments = args
+        description = "Opens a bpython, ipython or python interactive shell."
 
-    @expose(hide=True, help='Run an interactive shell')
+        epilog = "By default, the first interpreter found is used. The " \
+                 "order of look up is bpython, ipython, python. You can " \
+                 "specify a specific interpreter as a subcommand or as a " \
+                 "flag."
+
+        arguments = [
+            (['-b', '--bpython'], {
+                'action': 'store_true',
+                'help': 'Run bpython shell'
+            }),
+            (['-i', '--ipython'], {
+                'action': 'store_true',
+                'help': 'Run ipython shell'
+            }),
+            (['-p', '--python'], {
+                'action': 'store_true',
+                'help': 'Run python shell'
+            })
+        ]
+
+    @controller.expose(hide=True, help='Run an interactive shell')
     def default(self):
         if self.pargs.bpython:
             return self.bpython()
@@ -45,7 +50,7 @@ class ShellController(CementBaseController):
             if shell:
                 return shell
 
-    @expose(help='Run bpython shell')
+    @controller.expose(help='Run bpython shell')
     def bpython(self):
         shell = self.bpy()
         if not shell:
@@ -60,7 +65,7 @@ class ShellController(CementBaseController):
         except ImportError:
             pass
 
-    @expose(help='Run ipython shell')
+    @controller.expose(help='Run ipython shell')
     def ipython(self):
         shell = self.ipy()
         if not shell:
@@ -77,7 +82,7 @@ class ShellController(CementBaseController):
         except ImportError:
             pass
 
-    @expose(help='Run python shell')
+    @controller.expose(help='Run python shell')
     def python(self):
         shell = self.py()
         if not shell:
