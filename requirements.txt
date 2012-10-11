@@ -1,6 +1,0 @@
-pytz==2012d
-psycopg2==2.4.5
-cdecimal==2.3
-Flask==0.9
-flask-sqlalchemy==0.16
-flask-script==0.3.3
