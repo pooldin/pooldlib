@@ -1,27 +1,40 @@
-*.py[co]
+# Virtualenv
+env
+.Python
+include
 
-# Packages
+# Python Packages
 *.egg
 *.egg-info
-dist
+bin/*
 build
-eggs
-parts
-bin
-var
+dist
 sdist
+eggs
+env
+parts
+var
 develop-eggs
 .installed.cfg
 
-# Installer logs
+# Pip Installer Log
 pip-log.txt
 
-# Unit test / coverage reports
+# Unit test / coverage
 .coverage
 .tox
 
-#Translations
-*.mo
+# Mac OS X
+.DS_Store
 
-#Mr Developer
-.mr.developer.cfg
+# Generated files
+*.[oa]
+*.py[co]
+
+# Development environment
+.env
+.env.*
+
+/local/
+
+.webassets-cache
