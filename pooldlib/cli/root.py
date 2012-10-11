@@ -1,4 +1,4 @@
-from cement.core import CementBaseController, expose
+from cement.core.controller import CementBaseController, expose
 
 
 class RootController(CementBaseController):
