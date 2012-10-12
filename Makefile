@@ -1,7 +1,9 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
-.PHONY := dev install tests
+.PHONY := clean dev install tests
 
+clean:
+	@find . -name "*.py[co]" -exec rm -rf {} \;
 
 install:
 	@python setup.py install
