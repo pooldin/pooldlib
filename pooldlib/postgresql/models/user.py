@@ -91,7 +91,7 @@ class UserMeta(common.Model,
                common.KeyValueMixin):
     __tablename__ = 'user_meta'
 
-    user = db.relationship('User', backref='metadata', lazy='dynamic')
+    user = db.relationship('User', backref='metadata', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
                         nullable=False)

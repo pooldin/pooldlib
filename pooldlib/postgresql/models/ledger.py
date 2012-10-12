@@ -13,11 +13,11 @@ class InternalLedger(common.LedgerModel):
     currency_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('currency.id'),
                             nullable=False)
-    currency = db.relationship('Currency', backref='internal_ledger_entries', lazy='dynamic')
+    currency = db.relationship('Currency', backref='internal_ledger_entries', lazy='select')
     fee_id = db.Column(db.BigInteger(unsigned=True),
                        db.ForeignKey('fee.id'),
                        nullable=False)
-    fee = db.relationship('Fee', backref='internal_ledger_entries', lazy='dynamic')
+    fee = db.relationship('Fee', backref='internal_ledger_entries', lazy='select')
 
 
 class ExternalLedger(common.LedgerModel):
@@ -32,8 +32,8 @@ class ExternalLedger(common.LedgerModel):
     currency_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('currency.id'),
                             nullable=False)
-    currency = db.relationship('Currency', backref='external_ledger_entries', lazy='dynamic')
+    currency = db.relationship('Currency', backref='external_ledger_entries', lazy='select')
     fee_id = db.Column(db.BigInteger(unsigned=True),
                        db.ForeignKey('fee.id'),
                        nullable=False)
-    fee = db.relationship('Fee', backref='external_ledger_entries', lazy='dynamic')
+    fee = db.relationship('Fee', backref='external_ledger_entries', lazy='select')

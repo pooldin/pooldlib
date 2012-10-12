@@ -9,11 +9,11 @@ class Community(common.ConfigurationModel, common.ActiveMixin):
 class CommunityAssociation(common.Model, common.EnabledMixin):
     __tablename__ = 'community_association'
 
-    user = db.relationship('User', backref='communities', lazy='dynamic')
+    user = db.relationship('User', backref='communities', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
                         nullable=False)
-    community = db.relationship('Community', backref='participants', lazy='dynamic')
+    community = db.relationship('Community', backref='participants', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
@@ -25,11 +25,11 @@ class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
                       nullable=False,
                       index=True)
     accepted = db.Column(DateTimeTZ, nullable=True)
-    community = db.relationship('Community', backref='invitees', lazy='dynamic')
+    community = db.relationship('Community', backref='invitees', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
-    user = db.relationship('User', backref='invitations', lazy='dynamic')
+    user = db.relationship('User', backref='invitations', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
                         nullable=False)
@@ -40,7 +40,7 @@ class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
 class CommunityGoal(common.ConfigurationModel, common.ActiveMixin):
     __tablename__ = 'community_goal'
 
-    community = db.relationship('Community', backref='goals', lazy='dynamic')
+    community = db.relationship('Community', backref='goals', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
@@ -48,7 +48,7 @@ class CommunityGoal(common.ConfigurationModel, common.ActiveMixin):
     purchase = db.relationship('Purchase',
                                backref='community_goal',
                                uselist=False,
-                               lazy='dynamic')
+                               lazy='select')
     purchase_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('purchase.id'),
                             nullable=True)
@@ -57,7 +57,7 @@ class CommunityGoal(common.ConfigurationModel, common.ActiveMixin):
 class CommunityGoalMeta(common.Model, common.EnabledMixin, common.KeyValueMixin):
     __tablename__ = 'community_goal_meta'
 
-    community_goal = db.relationship('CommunityGoal', backref='metadata', lazy='dynamic')
+    community_goal = db.relationship('CommunityGoal', backref='metadata', lazy='select')
     community_goal_id = db.Column(db.BigInteger(unsigned=True),
                                   db.ForeignKey('community_goal.id'),
                                   nullable=False)

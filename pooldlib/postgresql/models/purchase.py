@@ -9,7 +9,7 @@ class Purchase(common.NameMixin, common.DescriptionMixin, common.Model):
     purchase_ledger = db.relationship('ExternalLedger',
                                       backref='purchase',
                                       uselist=False,
-                                      lazy='dynamic',
+                                      lazy='select',
                                       primaryjoin='Purchase.purchase_ledger_id==ExternalLedger.id')
     fulfilled = db.Column(db.Boolean, default=False)
     refunded = db.Column(db.Boolean, default=False)
@@ -19,7 +19,7 @@ class Purchase(common.NameMixin, common.DescriptionMixin, common.Model):
     refund_ledger = db.relationship('ExternalLedger',
                                     backref='refund',
                                     uselist=False,
-                                    lazy='dynamic',
+                                    lazy='select',
                                     primaryjoin='Purchase.refund_ledger_id==ExternalLedger.id')
 
     # These should be migrated to a hstore

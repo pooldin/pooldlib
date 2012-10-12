@@ -13,11 +13,11 @@ class Balance(common.Model, common.EnabledMixin):
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
                         nullable=False)
-    user = db.relationship('User', backref='balances', lazy='dynamic')
+    user = db.relationship('User', backref='balances', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
-    community = db.relationship('Community', backref='balances', lazy='dynamic')
+    community = db.relationship('Community', backref='balances', lazy='select')
     type = db.Column(db.Enum('user', 'community', name='balance_type_enum'))
 
     @classmethod
