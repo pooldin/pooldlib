@@ -23,6 +23,7 @@ install_requires = [
     'cdecimal==2.3',
     'cement==2.0.2',
     'Werkzeug>=0.7',
+    'SQLAlchemy',
 ]
 
 tests_require = [
