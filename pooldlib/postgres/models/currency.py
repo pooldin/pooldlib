@@ -1,4 +1,4 @@
-from .. import common, db
+from pooldlib.postgres import common, db
 
 
 class Currency(common.DisabledMixin, common.Model):

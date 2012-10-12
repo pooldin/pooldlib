@@ -1,5 +1,5 @@
-from .. import db
-from ..types import UUID
+from pooldlib.postgres import db
+from pooldlib.postgres.types import UUID
 
 
 class IDMixin(object):

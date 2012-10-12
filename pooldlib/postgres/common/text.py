@@ -1,4 +1,4 @@
-from .. import db
+from pooldlib.postgres import db
 
 
 class NameMixin(object):

@@ -2,11 +2,10 @@ import os
 import json
 
 from sqlalchemy import create_engine
-from flask.ext.script import prompt_bool
 
-from . import db as current_db
-from . import models
-from .. import path
+from pooldlib.postgres import db as current_db
+from pooldlib.postgres import models
+from pooldlib import path
 
 fixture_path = os.path.dirname(path)
 fixture_path = os.path.join(fixture_path, 'fixtures')
@@ -165,13 +164,13 @@ class DBManager(object):
             current_db.session.commit()
 
     def drop_all(self, prompt=None):
+        raise NotImplementedError()
         message = prompt
 
         if message is None:
             message = "Are you sure you want to lose all your data"
 
-        if message and not prompt_bool(message):
-            return False
+        # Need user verification step added here.
 
         for app in self.apps:
             with app.app_context():

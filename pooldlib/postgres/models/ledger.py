@@ -1,5 +1,5 @@
-from .. import common, db
-from ..types import UUID
+from pooldlib.postgres import common, db
+from pooldlib.postgres.types import UUID
 
 
 class InternalLedger(common.LedgerModel):

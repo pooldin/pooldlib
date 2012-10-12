@@ -1,4 +1,4 @@
-from .. import db, common
+from pooldlib.postgres import db, common
 
 
 class Balance(common.Model, common.EnabledMixin):

@@ -2,9 +2,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from flask.ext import login
-
-from .. import common, db
+from pooldlib.postgres import db, common
 
 
 UserPurchase = db.Table('user_purchase', db.metadata,
@@ -18,8 +16,7 @@ class User(common.Model,
            common.NullNameMixin,
            common.DisabledMixin,
            common.VerifiedMixin,
-           common.SerializationMixin,
-           login.UserMixin):
+           common.SerializationMixin):
 
     username = db.Column(db.String(40), unique=True, nullable=False)
     _password = db.Column('password', db.String(255), nullable=False)
@@ -49,8 +46,17 @@ class User(common.Model,
     def is_password(self, password):
         return check_password_hash(self.password, password)
 
+    def is_anonymous(self):
+        return False
+
+    def is_authenticated(self):
+        return True
+
     def is_active(self):
         return self.enabled
+
+    def get_id(self):
+        return unicode(self.id)
 
     @property
     def primary_email(self):
@@ -64,8 +70,20 @@ class User(common.Model,
         return super(User, self).to_dict(fields=fields)
 
 
-class AnonymousUser(login.AnonymousUser):
+class AnonymousUser(object):
     name = 'Anonymous'
+
+    def is_anonymous(self):
+        return True
+
+    def is_authenticated(self):
+        return False
+
+    def is_active(self):
+        return False
+
+    def get_id(self):
+        return None
 
 
 class UserMeta(common.Model,

@@ -1,12 +1,12 @@
 import psycopg2
 import psycopg2.extras
 
-from flask.ext.sqlalchemy import SQLAlchemy
+from pooldlib.flasklessalchemy import SQLAlchemy
 
 
 class Database(SQLAlchemy):
 
-    def apply_driver_hacks(self, app, info, options):
+    def apply_driver_hacks(self, info, options):
         """This method adds option to support hstore on psycopg2"""
 
         creator = 'create_%s_connection' % info.drivername
@@ -14,12 +14,12 @@ class Database(SQLAlchemy):
 
         if hasattr(creator, '__call__'):
             def _connect():
-                return creator(app, info, options)
+                return creator(info, options)
             options['creator'] = _connect
 
-        super(Database, self).apply_driver_hacks(self, app, info, options)
+        super(Database, self).apply_driver_hacks(self, info, options)
 
-    def create_postgres_connection(self, app, info, options):
+    def create_postgres_connection(self, info, options):
         conn = psycopg2.connect(user=info.username,
                                 host=info.host,
                                 port=info.port,

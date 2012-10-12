@@ -1,5 +1,5 @@
-from . import base
+from pooldlib.postgres import base
 
 db = base.Database()
 
-from .models import *
+from pooldlib.postgres.models import *

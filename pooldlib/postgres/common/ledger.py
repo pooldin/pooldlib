@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from .. import db
-from ..types import DateTimeTZ
+from pooldlib.postgres import db
+from pooldlib.postgres.types import DateTimeTZ
 
 
 class LedgerMixin(object):
