@@ -3,15 +3,11 @@
 .PHONY := dev install tests
 
 
-SETUP=python setup.py
-SETUP=nosetests
-
-
 install:
-	@$(SETUP) install
+	@python setup.py install
 
 dev:
-	@$(SETUP) dev
+	@python setup.py dev
 
 tests: .FORCE
 	@nosetests || true

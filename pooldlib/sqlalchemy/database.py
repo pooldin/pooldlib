@@ -267,7 +267,8 @@ class _EngineConnector(object):
             if _record_queries(self._sa):
                 # The argument to _ConnectionDebugProxy should be the import
                 # name of a package... the question is, which package...
-                options['proxy'] = _ConnectionDebugProxy('SQLAlchemy Engin Connector')
+                name = 'SQLAlchemy Engine Connector'
+                options['proxy'] = _ConnectionDebugProxy(name)
             if echo:
                 options['echo'] = True
             self._engine = rv = sqlalchemy.create_engine(info, **options)
@@ -291,7 +292,10 @@ class _BoundDeclarativeMeta(DeclarativeMeta):
         # attach a primary key to support model inheritance that does
         # not use joins.  We also don't want a table name if a whole
         # table is defined
-        if not tablename and d.get('__table__') is None and _defines_primary_key(d):
+        if not tablename and \
+           d.get('__table__') is None and \
+           _defines_primary_key(d):
+
             def _join(match):
                 word = match.group()
                 if len(word) > 1:
@@ -344,7 +348,7 @@ class Model(object):
     query = None
 
 
-class SQLAlchemy(object):
+class Database(object):
 
     def __init__(self, config=None, use_native_unicode=True,
                  session_extensions=None, session_options=None,
@@ -457,7 +461,8 @@ class SQLAlchemy(object):
         a dictionary of keyword arguments that will then be used to call
         the :func:`sqlalchemy.create_engine` function.
 
-        The default implementation injects the setting of `SQLALCHEMY_NATIVE_UNICODE`.
+        The default implementation injects the setting of
+        `SQLALCHEMY_NATIVE_UNICODE`.
         """
         unu = self.config['SQLALCHEMY_NATIVE_UNICODE']
         if unu is None:
@@ -469,9 +474,9 @@ class SQLAlchemy(object):
     def engine(self):
         """Gives access to the engine.  If the database configuration is bound
         to a specific application (initialized with an application) this will
-        always return a database connection.  If however the current application
-        is used this might raise a :exc:`RuntimeError` if no application is
-        active at the moment.
+        always return a database connection.  If however the current
+        application is used this might raise a :exc:`RuntimeError` if no
+        application is active at the moment.
         """
         return self.get_engine()
 

@@ -1,10 +1,10 @@
 import psycopg2
 import psycopg2.extras
 
-from pooldlib.flasklessalchemy import SQLAlchemy
+from pooldlib import sqlalchemy
 
 
-class Database(SQLAlchemy):
+class Database(sqlalchemy.Database):
 
     def apply_driver_hacks(self, info, options):
         """This method adds option to support hstore on psycopg2"""
