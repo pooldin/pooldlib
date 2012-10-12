@@ -1,6 +1,6 @@
 from sqlalchemy.ext.declarative import declared_attr
 
-from pooldlib.postgres import db
+from pooldlib.postgresql import db
 
 from .active import EnabledMixin
 from .identity import IDMixin, UUIDMixin

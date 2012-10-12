@@ -1,4 +1,4 @@
-from pooldlib.postgres import db
+from pooldlib.postgresql import db
 
 
 class KeyValueMixin(object):

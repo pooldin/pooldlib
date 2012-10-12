@@ -2,8 +2,8 @@ from datetime import datetime
 
 from sqlalchemy.ext.hybrid import hybrid_property
 
-from pooldlib.postgres import db
-from pooldlib.postgres.types import DateTimeTZ
+from pooldlib.postgresql import db
+from pooldlib.postgresql.types import DateTimeTZ
 
 
 class EnabledMixin(object):

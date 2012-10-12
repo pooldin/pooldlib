@@ -17,7 +17,7 @@ class Database(SQLAlchemy):
                 return creator(info, options)
             options['creator'] = _connect
 
-        super(Database, self).apply_driver_hacks(self, info, options)
+        super(Database, self).apply_driver_hacks(info, options)
 
     def create_postgres_connection(self, info, options):
         conn = psycopg2.connect(user=info.username,

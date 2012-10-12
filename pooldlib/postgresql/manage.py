@@ -3,8 +3,8 @@ import json
 
 from sqlalchemy import create_engine
 
-from pooldlib.postgres import db as current_db
-from pooldlib.postgres import models
+from pooldlib.postgresql import db as current_db
+from pooldlib.postgresql import models
 from pooldlib import path
 
 fixture_path = os.path.dirname(path)

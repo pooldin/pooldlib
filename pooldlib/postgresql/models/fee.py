@@ -1,4 +1,4 @@
-from pooldlib.postgres import common
+from pooldlib.postgresql import common
 
 
 class Fee(common.ConfigurationModel):

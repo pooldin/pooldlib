@@ -1,5 +1,5 @@
-from pooldlib.postgres import common, db
-from pooldlib.postgres.types import UUID
+from pooldlib.postgresql import common, db
+from pooldlib.postgresql.types import UUID
 
 
 class Transfer(common.LedgerModel):

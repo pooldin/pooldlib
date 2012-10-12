@@ -1,5 +1,5 @@
-from pooldlib.postgres import db, common
-from pooldlib.postgres.types import DateTimeTZ
+from pooldlib.postgresql import db, common
+from pooldlib.postgresql.types import DateTimeTZ
 
 
 class Community(common.ConfigurationModel, common.ActiveMixin):

@@ -2,7 +2,7 @@ from sqlalchemy.ext.hybrid import hybrid_property
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
-from pooldlib.postgres import db, common
+from pooldlib.postgresql import db, common
 
 
 UserPurchase = db.Table('user_purchase', db.metadata,
