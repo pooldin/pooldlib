@@ -22,6 +22,7 @@ install_requires = [
     'psycopg2==2.4.5',
     'cdecimal==2.3',
     'cement==2.0.2',
+    'Werkzeug>=0.7',
 ]
 
 tests_require = [
