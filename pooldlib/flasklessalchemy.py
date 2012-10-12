@@ -439,6 +439,9 @@ class SQLAlchemy(object):
         #    self.session.remove()
         #    return response
 
+    def shutdown_session(self):
+        self.session.remove()
+
     def apply_pool_defaults(self, options):
         def _setdefault(optionkey, configkey):
             value = self.config[configkey]
