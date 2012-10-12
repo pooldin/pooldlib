@@ -265,7 +265,9 @@ class _EngineConnector(object):
             self._sa.apply_pool_defaults(options)
             self._sa.apply_driver_hacks(info, options)
             if _record_queries(self._sa):
-                options['proxy'] = _ConnectionDebugProxy(self._app.import_name)
+                # The argument to _ConnectionDebugProxy should be the import
+                # name of a package... the question is, which package...
+                options['proxy'] = _ConnectionDebugProxy('SQLAlchemy Engin Connector')
             if echo:
                 options['echo'] = True
             self._engine = rv = sqlalchemy.create_engine(info, **options)
@@ -406,13 +408,17 @@ class SQLAlchemy(object):
         of an application not initialized that way or connections will
         leak.
         """
-        config.setdefault('SQLALCHEMY_BINDS', None)
-        config.setdefault('SQLALCHEMY_NATIVE_UNICODE', None)
-        config.setdefault('SQLALCHEMY_ECHO', False)
-        config.setdefault('SQLALCHEMY_RECORD_QUERIES', None)
-        config.setdefault('SQLALCHEMY_POOL_SIZE', None)
-        config.setdefault('SQLALCHEMY_POOL_TIMEOUT', None)
-        config.setdefault('SQLALCHEMY_POOL_RECYCLE', None)
+        if not self.config:
+            self.config = dict()
+        self.config.update(config)
+
+        self.config.setdefault('SQLALCHEMY_BINDS', None)
+        self.config.setdefault('SQLALCHEMY_NATIVE_UNICODE', None)
+        self.config.setdefault('SQLALCHEMY_ECHO', False)
+        self.config.setdefault('SQLALCHEMY_RECORD_QUERIES', None)
+        self.config.setdefault('SQLALCHEMY_POOL_SIZE', None)
+        self.config.setdefault('SQLALCHEMY_POOL_TIMEOUT', None)
+        self.config.setdefault('SQLALCHEMY_POOL_RECYCLE', None)
 
         if not hasattr(self, 'extensions'):
             self.extensions = {}
