@@ -224,9 +224,9 @@ class _QueryProperty(object):
 
 
 def _record_queries(sa):
-    if sa.config['DEBUG']:
+    if sa.config.get('DEBUG'):
         return True
-    rq = sa.config['SQLALCHEMY_RECORD_QUERIES']
+    rq = sa.config.get('SQLALCHEMY_RECORD_QUERIES')
     return rq if rq else False
 
 
