@@ -19,6 +19,8 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.util import to_list
 
+from pooldlib.util.signals import models_committed, before_models_committed
+
 # the best timer function for the platform
 if sys.platform == 'win32':
     _timer = time.clock
@@ -161,27 +163,19 @@ class _SignallingSessionExtension(SessionExtension):
     def before_commit(self, session):
         d = session._model_changes
         if d:
-            for callback in self._before_models_committed:
-                callback(session, changes=d.values())
+            before_models_committed.send(session, changes=d.values())
         return EXT_CONTINUE
 
     def after_commit(self, session):
         d = session._model_changes
         if d:
-            for callback in self._models_committed:
-                callback(session, changes=d.values())
+            models_committed.send(session, changes=d.values())
             d.clear()
         return EXT_CONTINUE
 
     def after_rollback(self, session):
         session._model_changes.clear()
         return EXT_CONTINUE
-
-    def register_before_models_committed(self, func):
-        self._before_models_committed.append(func)
-
-    def register_models_committed(self, func):
-        self._models_committed.append(func)
 
 
 class _SignallingSession(Session):
@@ -367,23 +361,6 @@ class Database(object):
 
         _include_sqlalchemy(self)
         self.Query = base_query_class
-
-    def register_signal(self, signal, handler):
-        """Register signal handler for SQLAlchemy commit hook.
-
-        Args:
-            signal (str): string identifying the SQLAlchemy signal to bind to.
-                Choices are: 'models-committed' and 'before-models-committed'
-            handler (func): callable to bind to specified signal. The function
-                must accept a sqlalchemy.orm.session.Session instance and the
-                kwparam 'changes'.
-        """
-        attr = 'register_%s' % signal.replace('-', '_')
-        func = getattr(self._signalling_session_extension, attr, None)
-        if not func:
-            msg = "Unknown SQLAlchemy session signal type: %s" % signal
-            raise UnknownSignalBindError(msg)
-        func(handler)
 
     @property
     def metadata(self):
