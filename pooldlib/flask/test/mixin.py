@@ -1,60 +1,25 @@
-import unittest
 import json
 import time
 from datetime import datetime, timedelta
-
 from cookielib import Cookie
+
 from werkzeug.urls import url_encode
 
 
-class FlaskTestSuite(unittest.TestSuite):
-
-    @classmethod
-    def create(cls, cases):
-        cases = cases or []
-        suite = cls()
-        for case in cases:
-            suite.addTest(unittest.makeSuite(case))
-        return suite
-
-
-class FlaskTestCase(unittest.TestCase):
-
-    DATABASE_URL = 'sqlite:///'
-
-    def __call__(self, result=None):
-        self.preTest()
-        super(FlaskTestCase, self).__call__(result)
-        self.postTest()
-
-    @property
-    def session_name(self):
-        return self.app.config.get('SESSION_COOKIE_NAME')
-
-    @property
-    def session_serializer(self):
-        return self.app.session_interface.get_serializer(self.app)
-
-    @property
-    def session_domain(self):
-        return self.app.session_interface.get_cookie_domain(self.app)
-
-    @property
-    def session_path(self):
-        return self.app.session_interface.get_cookie_path(self.app)
+class ContextCaseMixin(object):
 
     def create_app(self):
         raise NotImplementedError()
 
-    def pre_test(self):
+    def setup_context(self):
         self.app = self.create_app()
         self.client = self.app.test_client()
 
-        self._ctx = self.app.test_request_context()
-        self._ctx.push()
+    def teardown_context(self):
+        pass
 
-    def post_test(self):
-        self._ctx.pop()
+
+class RequestCaseMixin(object):
 
     def request(self, *args, **kw):
         accept = kw.pop('accept', None)
@@ -122,6 +87,25 @@ class FlaskTestCase(unittest.TestCase):
     def delete(self, *args, **kw):
         kw['method'] = 'DELETE'
         return self.request(*args, **kw)
+
+
+class SessionCaseMixin(object):
+
+    @property
+    def session_name(self):
+        return self.app.config.get('SESSION_COOKIE_NAME')
+
+    @property
+    def session_serializer(self):
+        return self.app.session_interface.get_serializer(self.app)
+
+    @property
+    def session_domain(self):
+        return self.app.session_interface.get_cookie_domain(self.app)
+
+    @property
+    def session_path(self):
+        return self.app.session_interface.get_cookie_path(self.app)
 
     def cookies(self):
         if not hasattr(self, 'client') or not self.client:
