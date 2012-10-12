@@ -4,4 +4,5 @@ import cdecimal
 sys.modules["decimal"] = cdecimal
 
 
-path = os.path.abspath(__name__)
+DIR = os.path.dirname(__file__)
+DIR = os.path.abspath(__file__)
