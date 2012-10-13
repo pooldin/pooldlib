@@ -241,7 +241,7 @@ class _EngineConnector(object):
 
     def get_uri(self):
         if self._bind is None:
-            return self._sa.config['SQLALCHEMY_DATABASE_URI']
+            return self._sa.config.get('SQLALCHEMY_DATABASE_URI')
         binds = self._sa.config.get('SQLALCHEMY_BINDS') or ()
         assert self._bind in binds, \
             'Bind %r is not specified.  Set it in the SQLALCHEMY_BINDS ' \
@@ -251,7 +251,7 @@ class _EngineConnector(object):
     def get_engine(self):
         with self._lock:
             uri = self.get_uri()
-            echo = self._sa.config['SQLALCHEMY_ECHO']
+            echo = self._sa.config.get('SQLALCHEMY_ECHO')
             if (uri, echo) == self._connected_for:
                 return self._engine
             info = make_url(uri)
@@ -425,7 +425,7 @@ class Database(object):
 
     def apply_pool_defaults(self, options):
         def _setdefault(optionkey, configkey):
-            value = self.config[configkey]
+            value = self.config.get(configkey)
             if value is not None:
                 options[optionkey] = value
         _setdefault('pool_size', 'SQLALCHEMY_POOL_SIZE')
@@ -441,7 +441,7 @@ class Database(object):
         The default implementation injects the setting of
         `SQLALCHEMY_NATIVE_UNICODE`.
         """
-        unu = self.config['SQLALCHEMY_NATIVE_UNICODE']
+        unu = self.config.get('SQLALCHEMY_NATIVE_UNICODE')
         if unu is None:
             unu = self.use_native_unicode
         if not unu:
@@ -535,5 +535,5 @@ class Database(object):
     def __repr__(self):
         return '<%s engine=%r>' % (
             self.__class__.__name__,
-            self.config['SQLALCHEMY_DATABASE_URI']
+            self.config.get('SQLALCHEMY_DATABASE_URI')
         )
