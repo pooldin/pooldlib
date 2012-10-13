@@ -4,10 +4,10 @@ from nose.tools import raises, assert_equal, assert_true
 
 from pooldlib.postgresql import User
 
-from tests.base import PooldLibDBBaseTest
+from tests.base import PooldLibPostgresBaseTest
 
 
-class TestUserModel(PooldLibDBBaseTest):
+class TestUserModel(PooldLibPostgresBaseTest):
 
     def test_create(self):
         u = User()
