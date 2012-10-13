@@ -3,7 +3,7 @@ from pooldlib.postgresql.types import UUID
 
 
 class Transfer(common.LedgerModel):
-    group_id = db.Column(UUID, unique=True)
+    group_id = db.Column(UUID, unique=False, index=True)
     balance = db.relationship('Balance', backref='transfers', lazy='select')
     balance_id = db.Column(db.BigInteger(unsigned=True),
                            db.ForeignKey('balance.id'),

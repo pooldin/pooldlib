@@ -16,7 +16,8 @@ class User(common.Model,
            common.NullNameMixin,
            common.DisabledMixin,
            common.VerifiedMixin,
-           common.SerializationMixin):
+           common.SerializationMixin,
+           common.BalanceMixin):
 
     username = db.Column(db.String(40), unique=True, nullable=False)
     _password = db.Column('password', db.String(255), nullable=False)

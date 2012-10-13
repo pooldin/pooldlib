@@ -1,4 +1,5 @@
 from .active import EnabledMixin, DisabledMixin, VerifiedMixin, ActiveMixin
+from .balance import BalanceMixin
 from .base import Model, ConfigurationModel, LedgerModel
 from .identity import IDMixin, UUIDMixin
 from .text import NameMixin, NullNameMixin, DescriptionMixin, SlugMixin

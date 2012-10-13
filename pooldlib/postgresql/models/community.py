@@ -2,7 +2,7 @@ from pooldlib.postgresql import db, common
 from pooldlib.postgresql.types import DateTimeTZ
 
 
-class Community(common.ConfigurationModel, common.ActiveMixin):
+class Community(common.ConfigurationModel, common.ActiveMixin, common.BalanceMixin):
     pass
 
 

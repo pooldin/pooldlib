@@ -6,5 +6,5 @@ from pooldlib.postgresql.types import DateTimeTZ
 
 class LedgerMixin(object):
     created = db.Column(DateTimeTZ, default=datetime.utcnow)
-    debit = db.Column(db.DECIMAL(precision=24, scale=4), nullable=False)
-    credit = db.Column(db.DECIMAL(precision=24, scale=4), nullable=False)
+    debit = db.Column(db.DECIMAL(precision=24, scale=4), nullable=True)
+    credit = db.Column(db.DECIMAL(precision=24, scale=4), nullable=True)
