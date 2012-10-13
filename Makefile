@@ -12,6 +12,6 @@ dev:
 	@python setup.py dev
 
 tests: .FORCE
-	@nosetests || true
+	@nosetests -v || true
 
 .FORCE:
