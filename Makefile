@@ -1,12 +1,10 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
-.PHONY: clean clean-docs clean-py dev docs install tests
+.PHONY: clean clean-py dev docs docs-clean docs-open install tests
+
 
 clean:
-	@$(MAKE) clean-docs clean-py
-
-clean-docs:
-	@$(MAKE) -C docs clean
+	@$(MAKE) docs-clean clean-py
 
 clean-py:
 	find . -name "*.py[co]" -exec rm -rf {} \;
@@ -18,6 +16,12 @@ dev:
 docs:
 	@git submodule update
 	@$(MAKE) -C docs html
+
+docs-clean:
+	@$(MAKE) -C docs clean
+
+docs-open:
+	@open docs/_build/html/index.html
 
 install:
 	@python setup.py install
