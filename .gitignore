@@ -38,3 +38,4 @@ pip-log.txt
 /local/
 
 .webassets-cache
+docs/_build

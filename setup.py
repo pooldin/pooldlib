@@ -32,11 +32,16 @@ tests_require = [
     'coverage==3.5.2',
 ]
 
+docs_require = [
+    'Sphinx==1.1.3',
+]
+
 entry_points = dict()
 
 setup(name='pooldlib',
       version=version,
-      description="The foundational library which defines Poold.in and is used by pooldwww and pooldREST.",
+      description='The foundational library which defines Poold.in and is '
+                  'used by pooldwww and pooldREST.',
       long_description=README,
       keywords='library',
       author='Brian Oldfield',
@@ -46,14 +51,9 @@ setup(name='pooldlib',
       packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
       include_package_data=True,
       zip_safe=False,
-      extras_require={'tests': tests_require},
+      extras_require=dict(tests=tests_require, docs=docs_require),
       install_requires=install_requires,
       entry_points=entry_points,
-      classifiers=[
-                   # Get strings from http://pypi.python.org/pypi?%4Aaction=list_classifiers
-                   'Development Status :: 4 - Beta',
-                   'Intended Audience :: Poold.in',
-      ],
-      scripts=[
-      ],
-      )
+      scripts=[],
+      classifiers=['Development Status :: 4 - Beta',
+                   'Intended Audience :: Poold.in'])

@@ -1,5 +1,5 @@
-from .suite import TestSuite, suites, iter_suites
-from .mixin import ContextCaseMixin, RequestCaseMixin, SessionCaseMixin
+from pooldlib.flask.test.suite import TestSuite, suites, iter_suites
+from pooldlib.flask.test.mixin import ContextCaseMixin, RequestCaseMixin, SessionCaseMixin
 
 
 def run(name):
