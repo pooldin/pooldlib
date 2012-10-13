@@ -12,11 +12,11 @@ clean-py:
 	find . -name "*.py[co]" -exec rm -rf {} \;
 
 dev:
-	@git submodule update
 	@python setup.py dev
 	@$(MAKE) docs
 
 docs:
+	@git submodule update
 	@$(MAKE) -C docs html
 
 install:
