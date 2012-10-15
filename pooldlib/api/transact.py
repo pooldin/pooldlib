@@ -13,11 +13,11 @@ from pooldlib.exceptions import InsufficentFundsTransferError
 
 
 class Transact(object):
-    """`pooldlib` API for working with user/user, user/community, etc trasfers.
+    """``pooldlib`` API for working with user/user, user/community, etc transfers.
     Example usage:
 
         >>> t = Transact()
-        >>> t.transfer(Decimal('25.0000'), to_user=a_community, from_user=a_user)
+        >>> t.transfer(Decimal('25.0000'), destination=a_community, origin=a_user)
         >>> if not t.verify(): raise TransactionError()
         >>> t.execute()
     """
@@ -26,24 +26,23 @@ class Transact(object):
         self.id = uuid()
         self.reset()
 
-    def transfer(self, amount, to_user=None, from_user=None, currency=None, fee=None):
+    def transfer(self, amount, destination=None, origin=None, currency=None, fee=None):
         """Add a balance transfer to be executed to the
         :class:`pooldlib.api.Transact` list.
 
         :param amount: Amount of currency to be transferred.
         :type amount: :class:`decimal.Decimal`
-        :param to_user: Instance of balance holding model which is receiving in the transfer.
-        :type to_user: :class:`pooldlib.postgresql.models.User` or
-                       :class:`pooldlib.postgresql.models.Community`
-        :param from_user: Instance of balance holding model which is sending in the transfer.
-        :type from_user: :class:`pooldlib.postgresql.models.User` or
+        :param origin: Instance of balance holding model which is receiving in the transfer.
+        :type origin: :class:`pooldlib.postgresql.models.User` or
+                  :class:`pooldlib.postgresql.models.Community`
+        :param origin: Instance of balance holding model which is sending in the transfer.
+        :type origin: :class:`pooldlib.postgresql.models.User` or
                        :class:`pooldlib.postgresql.models.Community`
         :param currency: Currency type for which to execute the transfer.
         :type currency: :class:`pooldlib.postgresql.models.Currency` or string.
         :param fee: Fee associated with the transfer.
         :type fee: :class:`pooldlib.postgresql.models.Fee`, string name of Fee or integer id of Fee.
         """
-
         if currency is None:
             currency = 'USD'
 
@@ -53,23 +52,25 @@ class Transact(object):
             if isinstance(fee, basestring):
                 fee = FeeModel.query.filter_by(name=fee).first()
 
-        credit_balance = to_user.balance_for_currency(currency, for_update=True)
+        credit_balance = destination.balance_for_currency(currency, for_update=True)
         party = None
         if fee:
-            party = getattr(to_user, 'username', None) or to_user.name
+            party = getattr(destination, 'username', None) or destination.name
         self._transfer_credit(credit_balance, amount, fee=fee, party=party)
 
         party = None
         if fee:
-            party = getattr(from_user, 'username', None) or from_user.name
-        debit_balance = from_user.balance_for_currency(currency, for_update=True)
+            party = getattr(origin, 'username', None) or origin.name
+        debit_balance = origin.balance_for_currency(currency, for_update=True)
         self._transfer_debit(debit_balance, amount, fee=fee, party=party)
 
-    def external(self, amount, party, to_user=None, from_user=None):
+    def external(self, amount, party, destination=None, origin=None):
         pass
 
     def verify(self):
         """Verify that there are no errors associated with the transact list.
+
+        :returns: bool -- ``True`` if no errors are found.
         """
         return len(self._errors) == 0
 
