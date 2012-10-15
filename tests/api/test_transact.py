@@ -26,7 +26,7 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
 
     def test_basic_transfer(self):
         t = TransactAPI()
-        t.transfer(Decimal('25.0000'), creditor=self.community_a, debtor=self.user_a)
+        t.transfer(Decimal('25.0000'), to_user=self.community_a, from_user=self.user_a)
         assert_true(t.verify())
 
         t.execute()
@@ -45,14 +45,14 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
     @raises(InsufficentFundsTransferError)
     def test_insufficient_funds_transfer(self):
         t = TransactAPI()
-        t.transfer(Decimal('55.0000'), creditor=self.community_a, debtor=self.user_a)
+        t.transfer(Decimal('55.0000'), to_user=self.community_a, from_user=self.user_a)
 
         t.execute()
 
     def test_transfer_with_fee(self):
         t = TransactAPI()
-        t.transfer(Decimal('25.0000'), creditor=self.community_a, debtor=self.user_a)
-        t.transfer(Decimal('5.0000'), creditor=self.user_b, debtor=self.user_a, fee=1)
+        t.transfer(Decimal('25.0000'), to_user=self.community_a, from_user=self.user_a)
+        t.transfer(Decimal('5.0000'), to_user=self.user_b, from_user=self.user_a, fee=1)
 
         assert_true(t.verify())
 
