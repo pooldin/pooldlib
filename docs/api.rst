@@ -1,7 +1,7 @@
 .. _api:
 
-API
-===
+pooldlib
+========
 
 
 Console
@@ -92,6 +92,13 @@ SQLAlchemy
 ----------
 
 .. autoclass:: pooldlib.sqlalchemy.Database
+
+API
+---
+
+.. autofunction:: pooldlib.api.balance.get
+.. autoclass:: pooldlib.api.transact.Transact
+   :members:
 
 
 Utils
