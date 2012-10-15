@@ -15,7 +15,7 @@ if os.path.isfile(README):
 else:
     README = None
 
-version = '0.1'
+version = '0.1.0-dev'
 
 install_requires = [
     'pytz==2012d',
