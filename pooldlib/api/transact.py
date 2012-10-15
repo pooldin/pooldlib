@@ -3,7 +3,7 @@ from decimal import Decimal
 from collections import defaultdict
 
 
-from pooldlib.postgresql import db
+from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import (Transaction as TransactionModel,
                                  Transfer as TransferModel,
                                  ExternalLedger as ExternalLedgerModel,
@@ -84,12 +84,11 @@ class Transact(object):
             self.reset()
             raise exc(msg)
 
-        for xfer_class_values in self._transfers.values():
-            for xfer in xfer_class_values.values():
-                db.session.add(xfer)
-        db.session.flush()
-
-        db.session.commit()
+        with transaction_session(auto_commit=True) as session:
+            for xfer_class_values in self._transfers.values():
+                for xfer in xfer_class_values.values():
+                    session.add(xfer)
+            session.flush()
 
     def _transfer_credit(self, balance, amount, fee=None, party=None):
         t = self._transfers['credit'][balance.id] or self._new_transfer(balance)
