@@ -1,6 +1,6 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
-.PHONY: clean clean-py dev docs docs-clean docs-open install tests
+.PHONY: clean clean-py dev docs docs-clean docs-open install tests upload
 
 
 clean:
@@ -28,3 +28,6 @@ install:
 
 tests:
 	@nosetests -v || true
+
+upload:
+	@python setup.py sdist upload -r pooldin
