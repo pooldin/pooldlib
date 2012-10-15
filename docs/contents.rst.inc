@@ -1,5 +1,5 @@
-API Reference
--------------
+pooldlib Reference
+------------------
 
 .. toctree::
    :maxdepth: 2
