@@ -92,6 +92,8 @@ SQLAlchemy
 ----------
 
 .. autoclass:: pooldlib.sqlalchemy.Database
+.. automodule:: pooldlib.sqlalchemy.transaction
+    :members:
 
 API
 ---
