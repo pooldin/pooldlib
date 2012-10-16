@@ -1,3 +1,4 @@
+from uuid import uuid4 as uuid
 from decimal import Decimal
 
 from nose.tools import raises, assert_equal, assert_true
@@ -14,14 +15,18 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
     def setUp(self):
         super(TestUserCampaignTransfer, self).setUp()
 
-        self.user_a = self.create_user('user_a', 'A. User')
+        n = uuid().hex
+        self.user_a = self.create_user(n, '%s %s' % (n[:16], n[16:]))
         self.user_a_balance = self.create_balance(user=self.user_a, currency_code='USD')
-        self.user_b = self.create_user('poold.in', 'Poold.in')
+
+        n = uuid().hex
+        self.user_b = self.create_user(n, '%s %s' % (n[:16], n[16:]))
         self.user_b_balance = self.create_balance(user=self.user_b, currency_code='USD')
 
-        self.community_a = self.create_user('community_a', 'It\'s campaign_a!')
+        self.community_a = self.create_user(uuid().hex, uuid().hex)
         self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
-        self.community_b = self.create_user('campaign_b', 'It\'s campaign_b!')
+
+        self.community_b = self.create_user(uuid().hex, uuid().hex)
         self.community_b_balance = self.create_balance(community=self.community_b, currency_code='USD')
 
     def test_basic_transfer(self):
