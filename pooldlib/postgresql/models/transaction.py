@@ -18,7 +18,7 @@ class Transaction(common.LedgerModel):
     community_goal = db.relationship('CommunityGoal', backref='purchased_goals', lazy='select')
     community_goal_id = db.Column(db.BigInteger(unsigned=True),
                                   db.ForeignKey('community_goal.id'),
-                                  nullable=False)
+                                  nullable=True)
 
 
 class Exchange(common.LedgerModel):
