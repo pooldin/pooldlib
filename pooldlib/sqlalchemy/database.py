@@ -19,7 +19,7 @@ from sqlalchemy.engine.url import make_url
 from sqlalchemy.ext.declarative import declarative_base, DeclarativeMeta
 from sqlalchemy.util import to_list
 
-from pooldlib.util.signals import models_committed, before_models_committed
+from pooldlib.signals import models_committed, before_models_committed
 
 # the best timer function for the platform
 if sys.platform == 'win32':
@@ -286,10 +286,7 @@ class _BoundDeclarativeMeta(DeclarativeMeta):
         # attach a primary key to support model inheritance that does
         # not use joins.  We also don't want a table name if a whole
         # table is defined
-        if not tablename and \
-           d.get('__table__') is None and \
-           _defines_primary_key(d):
-
+        if not tablename and d.get('__table__') is None and _defines_primary_key(d):
             def _join(match):
                 word = match.group()
                 if len(word) > 1:

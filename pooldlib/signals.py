@@ -1,6 +1,8 @@
 """
-    pooldlib.util.signals
-    ~~~~~~~~~~~~~~~~~~~~~
+    pooldlib.signals
+    ~~~~~~~~~~~~~~~~
+    .. currentmodule:: pooldlib.signals
+
     Module based on flask.signals: https://github.com/mitsuhiko/flask/blob/master/flask/signals.py
 
     Implements signals based on blinker if available, otherwise

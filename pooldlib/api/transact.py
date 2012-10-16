@@ -51,18 +51,18 @@ class Transact(object):
     def transfer(self, amount, destination=None, origin=None, currency=None, fee=None):
         """Add a (balance) **transfer** execution to the `Transact` list.
         Valid transfers are:
-            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.User`
-            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Community`
-            - :class:`pooldlib.postgresql.models.Community` to :class:`pooldlib.postgresql.models.User`
+        - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.User`
+        - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Community`
+        - :class:`pooldlib.postgresql.models.Community` to :class:`pooldlib.postgresql.models.User`
 
         :param amount: Amount of currency to be transferred.
         :type amount: decimal.Decimal
         :param origin: Instance of balance holding model which is receiving in the transfer.
         :type origin: :class:`pooldlib.postgresql.models.User` or
-                  :class:`pooldlib.postgresql.models.Community`
+                      :class:`pooldlib.postgresql.models.Community`
         :param origin: Instance of balance holding model which is sending in the transfer.
         :type origin: :class:`pooldlib.postgresql.models.User` or
-                       :class:`pooldlib.postgresql.models.Community`
+                      :class:`pooldlib.postgresql.models.Community`
         :param currency: Currency type for which to execute the transfer.
         :type currency: :class:`pooldlib.postgresql.models.Currency` or string.
         :param fee: Fee associated with the transfer.

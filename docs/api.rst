@@ -106,7 +106,7 @@ API
    :members:
 
 
-Utils
------
+Signals
+-------
 
-.. automodule:: pooldlib.util.signals
+.. automodule:: pooldlib.signals
