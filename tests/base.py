@@ -2,22 +2,29 @@ import unittest
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from pooldlib.postgresql import db, User, Community, Currency, Balance
+from pooldlib.postgresql import db, User, UserMeta, Community, Currency, Balance
 
 from tests import create_fixtures
 
 
 class PooldLibBaseTest(unittest.TestCase):
 
-    def create_user(self, username, name):
+    def create_user(self, username, name, email=None):
         u = User()
         u.name = name
         u.username = username
         u.password = username
         u.verified = True
         u.enabled = True
-
         self.commit_model(u)
+
+        if email is not None:
+            um = UserMeta()
+            um.key = 'email'
+            um.value = email
+            um.user = u
+            self.commit_model(um)
+
         return u
 
     def create_community(self, name, description, start=None, end=None):
