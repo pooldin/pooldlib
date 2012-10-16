@@ -1,6 +1,7 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
-.PHONY: clean clean-py dev docs docs-clean docs-open install tests upload-release upload-dev upload
+.PHONY: clean clean-py dev docs docs-clean docs-open install tests \
+		upload upload-dev upload-nightly upload-release
 
 REV=$(shell git rev-parse --short HEAD)
 TIMESTAMP=$(shell date +'%s')
@@ -33,11 +34,11 @@ tests:
 
 upload: upload-dev
 
-upload-release:
-	@python setup.py sdist upload -r pooldin
-
 upload-dev:
 	@python setup.py egg_info --tag-build='-dev.$(TIMESTAMP).$(REV)' sdist upload -r pooldin
 
 upload-nightly:
 	@python setup.py egg_info --tag-date --tag-build='-dev' sdist upload -r pooldin
+
+upload-release:
+	@python setup.py sdist upload -r pooldin
