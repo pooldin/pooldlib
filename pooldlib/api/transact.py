@@ -1,3 +1,10 @@
+"""
+pooldlib.api.transact
+===============================
+
+.. currentmodule:: pooldlib.api.transact
+
+"""
 from uuid import uuid4 as uuid
 from decimal import Decimal
 from collections import defaultdict

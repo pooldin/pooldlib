@@ -98,8 +98,11 @@ SQLAlchemy
 API
 ---
 
-.. autofunction:: pooldlib.api.balance.get
-.. autoclass:: pooldlib.api.transact.Transact
+.. automodule:: pooldlib.api
+    :members:
+.. automodule:: pooldlib.api.balance
+    :members:
+.. automodule:: pooldlib.api.transact
    :members:
 
 

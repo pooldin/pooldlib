@@ -1,3 +1,10 @@
+"""
+pooldlib.api.balance
+===============================
+
+.. currentmodule:: pooldlib.api.balance
+
+"""
 from sqlalchemy.orm.attributes import manager_of_class
 
 from pooldlib.postgresql import Balance as BalanceModel
