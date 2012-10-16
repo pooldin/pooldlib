@@ -23,6 +23,29 @@ class User(common.Model,
     _password = db.Column('password', db.String(255), nullable=False)
     purchases = db.relationship('Purchase', secondary=UserPurchase, backref='purchasing_user')
 
+    def __getattr__(self, name):
+        try:
+            return object.__getattribute__(self, name)
+        except AttributeError:
+            pass
+
+        value = self._get_meta_value(name)
+        if not value:
+            msg = "'%s' object has no attribute '%s'"
+            msg %= (self.__class__, name)
+            raise AttributeError(msg)
+        setattr(self, name, value)
+        return value
+
+    def _get_meta_value(self, key):
+        # NOTE :: Instance level caching of metadata keys
+        # NOTE :: might be smart here...
+        metadata = object.__getattribute__(self, 'metadata')
+        value = [m.value for m in metadata if m.key == key]
+        if not value:
+            return None
+        return value[0]
+
     @property
     def password(self):
         return self._password
