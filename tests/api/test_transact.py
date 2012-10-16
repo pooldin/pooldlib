@@ -3,8 +3,11 @@ from decimal import Decimal
 
 from nose.tools import raises, assert_equal, assert_true
 
-from pooldlib.postgresql import Transfer, InternalLedger
-from pooldlib.api import TransactAPI
+from pooldlib.postgresql import (Transfer as TransferModel,
+                                 Transaction as TransactionModel,
+                                 InternalLedger as InternalLedgerModel,
+                                 ExternalLedger as ExternalLedgerModel)
+from pooldlib.api import Transact
 from pooldlib.exceptions import InsufficentFundsTransferError
 
 from tests.base import PooldLibPostgresBaseTest
@@ -26,17 +29,14 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
         self.community_a = self.create_user(uuid().hex, uuid().hex)
         self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
 
-        self.community_b = self.create_user(uuid().hex, uuid().hex)
-        self.community_b_balance = self.create_balance(community=self.community_b, currency_code='USD')
-
     def test_basic_transfer(self):
-        t = TransactAPI()
+        t = Transact()
         t.transfer(Decimal('25.0000'), destination=self.community_a, origin=self.user_a)
         assert_true(t.verify())
 
         t.execute()
 
-        xfers = Transfer.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(group_id=t.id).all()
         assert_equal(2, len(xfers))
 
         debit_xfer = [x for x in xfers if x.balance == self.user_a.balance_for_currency('USD')]
@@ -49,13 +49,13 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
 
     @raises(InsufficentFundsTransferError)
     def test_insufficient_funds_transfer(self):
-        t = TransactAPI()
+        t = Transact()
         t.transfer(Decimal('55.0000'), destination=self.community_a, origin=self.user_a)
 
         t.execute()
 
     def test_transfer_with_fee(self):
-        t = TransactAPI()
+        t = Transact()
         t.transfer(Decimal('25.0000'), destination=self.community_a, origin=self.user_a)
         t.transfer(Decimal('5.0000'), destination=self.user_b, origin=self.user_a, fee=1)
 
@@ -63,7 +63,7 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
 
         t.execute()
 
-        xfers = Transfer.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(group_id=t.id).all()
         assert_equal(3, len(xfers))
 
         debit_xfer = [x for x in xfers if x.balance == self.user_a.balance_for_currency('USD')]
@@ -81,7 +81,7 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
         assert_equal(Decimal('5.0000'), debit_xfer[0].credit)
         assert_equal(None, debit_xfer[0].debit)
 
-        iledgers = InternalLedger.query.filter_by(record_id=t.id).all()
+        iledgers = InternalLedgerModel.query.filter_by(record_id=t.id).all()
         assert_equal(2, len(iledgers))
 
         credit_iledger = [l for l in iledgers if l.party == self.user_b.username]
@@ -93,3 +93,85 @@ class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
         assert_equal(1, len(debit_iledger))
         assert_equal(Decimal('5.0000'), debit_iledger[0].debit)
         assert_equal(None, debit_iledger[0].credit)
+
+
+class TestUserTransaction(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestUserTransaction, self).setUp()
+
+        n = uuid().hex
+        self.user_a = self.create_user(n, '%s %s' % (n[:16], n[16:]))
+        self.user_a_balance = self.create_balance(user=self.user_a, currency_code='USD')
+
+        self.community_a = self.create_user(uuid().hex, uuid().hex)
+        self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
+
+    def test_basic_transaction(self):
+        t = Transact()
+        t.transaction(self.user_a, 'test-party', 'test-reference-number-test_basic_transaction', credit=Decimal('25.0000'), currency='USD')
+        assert_true(t.verify())
+
+        t.execute()
+
+        txn = TransactionModel.query.filter_by(balance_id=self.user_a_balance.id).all()
+        assert_equal(1, len(txn))
+        txn = txn[0]
+        assert_equal(Decimal('25.0000'), txn.credit)
+        assert_true(txn.debit is None)
+
+        ldgr = ExternalLedgerModel.query.filter_by(record_id=t.id).all()
+        assert_equal(1, len(ldgr))
+        ldgr = ldgr[0]
+        assert_equal(Decimal('25.0000'), ldgr.credit)
+        assert_equal('test-party', ldgr.party)
+
+        assert_equal(Decimal('75.0000'), self.user_a_balance.amount)
+
+    @raises(InsufficentFundsTransferError)
+    def test_insufficient_funds_transaction(self):
+        t = Transact()
+        t.transaction(self.user_a, 'test-party', 'test-reference-number-test_test_insufficient_funds_transaction', debit=Decimal('55.0000'), currency='USD')
+        t.execute()
+
+    def test_transfer_with_fee(self):
+        t = Transact()
+        t.transaction(self.user_a, 'test-party', 'test-reference-number-test_transfer_with_fee', debit=Decimal('25.0000'), currency='USD')
+        t.transaction(self.user_a, 'test-party', 'test-reference-number-test_transfer_with_fee', debit=Decimal('5.0000'), currency='USD', fee=1)
+        t.transaction(self.user_a, 'poold', 'test-reference-number-test_transfer_with_fee', debit=Decimal('5.0000'), currency='USD', fee=1)
+
+        assert_true(t.verify())
+
+        t.execute()
+
+        txn = TransactionModel.query.filter_by(balance_id=self.user_a_balance.id).all()
+        assert_equal(1, len(txn))
+        txn = txn[0]
+        assert_equal(Decimal('35.0000'), txn.debit)
+        assert_true(txn.credit is None)
+
+        ldgr = ExternalLedgerModel.query.filter_by(record_id=t.id).all()
+        assert_equal(3, len(ldgr))
+
+        party_ldgr = [l for l in ldgr if l.party == 'test-party' and l.fee is None]
+        assert_equal(1, len(party_ldgr))
+        party_ldgr = party_ldgr[0]
+        assert_equal(Decimal('25.0000'), party_ldgr.debit)
+        assert_equal('test-party', party_ldgr.party)
+        assert_true(party_ldgr.credit is None)
+
+        party_fee_ldgr = [l for l in ldgr if l.party == 'test-party' and l.fee is not None]
+        assert_equal(1, len(party_fee_ldgr))
+        party_fee_ldgr = party_fee_ldgr[0]
+        assert_equal(Decimal('5.0000'), party_fee_ldgr.debit)
+        assert_equal('test-party', party_fee_ldgr.party)
+        assert_true(party_fee_ldgr.credit is None)
+
+        poold_ldgr = [l for l in ldgr if l.party == 'poold']
+        assert_equal(1, len(poold_ldgr))
+        poold_ldgr = poold_ldgr[0]
+        assert_equal(Decimal('5.0000'), poold_ldgr.debit)
+        assert_equal('poold', poold_ldgr.party)
+        assert_true(poold_ldgr.credit is None)
+
+        assert_equal(Decimal('15.0000'), self.user_a_balance.amount)

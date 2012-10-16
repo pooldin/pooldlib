@@ -5,5 +5,5 @@ pooldlib.api
 .. currentmodule:: pooldlib.api
 
 """
-from .transact import Transact as TransactAPI
+from .transact import Transact
 import balance as Balance

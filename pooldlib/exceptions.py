@@ -6,3 +6,8 @@ class TransactError(Exception):
 class InsufficentFundsTransferError(Exception):
     """An attempt was made to transfer too much currency from
     one balance to another."""
+
+
+class InsufficentFundsTransactionError(Exception):
+    """An attempt was made to execute a transaction with insufficient
+    funds in the target balance."""
