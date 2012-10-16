@@ -8,7 +8,8 @@ from pooldlib.postgresql import (Transfer as TransferModel,
                                  InternalLedger as InternalLedgerModel,
                                  ExternalLedger as ExternalLedgerModel)
 from pooldlib.api import Transact
-from pooldlib.exceptions import InsufficentFundsTransferError
+from pooldlib.exceptions import (InsufficentFundsTransferError,
+                                 InsufficentFundsTransactionError)
 
 from tests.base import PooldLibPostgresBaseTest
 
@@ -128,7 +129,7 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
 
         assert_equal(Decimal('75.0000'), self.user_a_balance.amount)
 
-    @raises(InsufficentFundsTransferError)
+    @raises(InsufficentFundsTransactionError)
     def test_insufficient_funds_transaction(self):
         t = Transact()
         t.transaction(self.user_a, 'test-party', 'test-reference-number-test_test_insufficient_funds_transaction', debit=Decimal('55.0000'), currency='USD')
