@@ -35,5 +35,5 @@ class ExternalLedger(common.LedgerModel):
     currency = db.relationship('Currency', backref='external_ledger_entries', lazy='select')
     fee_id = db.Column(db.BigInteger(unsigned=True),
                        db.ForeignKey('fee.id'),
-                       nullable=False)
+                       nullable=True)
     fee = db.relationship('Fee', backref='external_ledger_entries', lazy='select')
