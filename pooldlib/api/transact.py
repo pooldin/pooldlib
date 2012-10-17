@@ -51,9 +51,10 @@ class Transact(object):
     def transfer(self, amount, destination=None, origin=None, currency=None, fee=None):
         """Add a (balance) **transfer** execution to the `Transact` list.
         Valid transfers are:
-        - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.User`
-        - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Community`
-        - :class:`pooldlib.postgresql.models.Community` to :class:`pooldlib.postgresql.models.User`
+
+            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.User`
+            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Community`
+            - :class:`pooldlib.postgresql.models.Community` to :class:`pooldlib.postgresql.models.User`
 
         :param amount: Amount of currency to be transferred.
         :type amount: decimal.Decimal
