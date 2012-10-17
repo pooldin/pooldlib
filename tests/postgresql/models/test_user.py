@@ -2,12 +2,15 @@ from sqlalchemy.exc import IntegrityError
 
 from nose.tools import raises, assert_equal, assert_true
 
-from pooldlib.postgresql import User
+from pooldlib.postgresql import db, User
 
 from tests.base import PooldLibPostgresBaseTest
 
 
 class TestUserModel(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        self.session = db.session
 
     def test_create(self):
         u = User()
@@ -24,14 +27,16 @@ class TestUserModel(PooldLibPostgresBaseTest):
 
     @raises(IntegrityError)
     def test_create_duplicate(self):
-        u = User()
-        u.name = 'Testy McTesterson'
-        u.username = 'mctesterson'
-        u.password = 'mctesterson'
-        self.commit_model(u)
+        u1 = User()
+        u1.name = 'Testy McDuplicate'
+        u1.username = 'mcduplicate'
+        u1.password = 'mcduplicate'
+        self.session.add(u1)
+        self.session.flush()
 
-        u = User()
-        u.name = 'Testy McTesterson'
-        u.username = 'mctesterson'
-        u.password = 'mctesterson'
-        self.commit_model(u)
+        u2 = User()
+        u2.name = 'Testy McDuplicate'
+        u2.username = 'mcduplicate'
+        u2.password = 'mcduplicate'
+        self.session.add(u2)
+        self.session.flush()
