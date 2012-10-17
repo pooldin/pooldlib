@@ -14,7 +14,7 @@ UserPurchase = db.Table('user_purchase', db.metadata,
 class User(common.Model,
            common.IDMixin,
            common.NullNameMixin,
-           common.DisabledMixin,
+           common.EnabledMixin,
            common.VerifiedMixin,
            common.SerializationMixin,
            common.BalanceMixin):
@@ -34,7 +34,6 @@ class User(common.Model,
             msg = "'%s' object has no attribute '%s'"
             msg %= (self.__class__, name)
             raise AttributeError(msg)
-        setattr(self, name, value)
         return value
 
     def _get_meta_value(self, key):
