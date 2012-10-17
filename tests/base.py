@@ -13,7 +13,8 @@ class PooldLibBaseTest(unittest.TestCase):
         u = User()
         u.name = name
         u.username = username
-        u.password = username
+        # Passwords must contain at least one number, so we force it...
+        u.password = username + '1'
         u.verified = True
         u.enabled = True
         self.commit_model(u)
@@ -63,11 +64,8 @@ class PooldLibBaseTest(unittest.TestCase):
         self.commit_model(b)
         return b
 
-    def add_model(self, model):
-        db.session.add(model)
-
     def commit_model(self, model):
-        self.add_model(model)
+        db.session.add(model)
         db.session.commit()
 
 
