@@ -27,7 +27,7 @@ def transaction_session(session=None, auto_commit=False):
     # Catch any and every exception and execute a rollback
     except Exception, e:
         session.rollback()
-        # Now re-raise the exception to let it continue to buble up
+        # Now re-raise the exception to let it continue to bubble up
         raise e
     if auto_commit:
         session.commit()
