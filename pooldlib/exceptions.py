@@ -1,13 +1,53 @@
-class TransactError(Exception):
+"""
+pooldlib.exceptions
+===============================
+
+.. currentmodule:: pooldlib.exceptions
+
+"""
+class PooldlibError(Exception):
+    """Base class for exceptions raised by pooldlib.
+    """
+
+
+##################################
+### User API Related Exceptions
+class UserAPIError(PooldlibError):
+    """Base class for exceptions raise by the User API.
+    """
+
+
+class IllegalPasswordUpdateError(UserAPIError):
+    """Raised when an illegal password reset attempt
+    is made.
+    """
+
+
+class InvalidPasswordError(UserAPIError):
+    """Raised when an attempt is made to set a user's password
+    to one which doesn't conform to prescribed requirements.
+    """
+
+
+class UnknownUserError(UserAPIError):
+    """Raised when an attempt to access an unknown user is made.
+    """
+##################################
+
+
+##################################
+### Transaction API Related Exceptions
+class TransactAPIError(PooldlibError):
     """Base class for errors encountered during operation of
     pooldlib.api.Transact calls."""
 
 
-class InsufficentFundsTransferError(Exception):
+class InsufficentFundsTransferError(TransactAPIError):
     """An attempt was made to transfer too much currency from
     one balance to another."""
 
 
-class InsufficentFundsTransactionError(Exception):
+class InsufficentFundsTransactionError(TransactAPIError):
     """An attempt was made to execute a transaction with insufficient
     funds in the target balance."""
+##################################
