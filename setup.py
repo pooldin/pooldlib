@@ -17,6 +17,13 @@ else:
 
 version = '0.1'
 
+# Specify non-pypi dependency links (i.e. locate poold.in and github packages)
+stripe = 'https://code.stripe.com'
+
+links = [
+    stripe,
+]
+
 install_requires = [
     'pytz==2012d',
     'psycopg2==2.4.5',
@@ -24,6 +31,7 @@ install_requires = [
     'cement==2.0.2',
     'Werkzeug>=0.7',
     'SQLAlchemy',
+    'stripe',
 ]
 
 tests_require = [
