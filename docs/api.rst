@@ -104,9 +104,24 @@ API
     :members:
 .. automodule:: pooldlib.api.transact
    :members:
+.. automodule:: pooldlib.api.user
+   :members:
 
 
 Signals
 -------
 
 .. automodule:: pooldlib.signals
+   :members:
+
+Generators
+----------
+
+.. automodule:: pooldlib.generators
+   :members:
+
+Exceptions
+----------
+
+.. automodule:: pooldlib.exceptions
+   :members:
