@@ -385,3 +385,17 @@ def validate_password(password, exception_on_invalid=False):
     if not valid and exception_on_invalid:
         raise InvalidPasswordError(msg)
     return valid
+
+
+def username_exists(username):
+    """Checks whether a username exists. Returns true if the username exists or
+    false if the username does not exist.
+
+    :param username: The username to check for existence.
+    :type username: string
+
+    :returns: `bool`
+    """
+    query = UserModel.query
+    query = query.filter_by(username=username, enabled=True)
+    return query.count() > 0
