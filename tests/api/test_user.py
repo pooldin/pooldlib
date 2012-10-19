@@ -3,7 +3,6 @@ from uuid import uuid4 as uuid
 from nose.tools import raises, assert_equal, assert_true, assert_false
 
 from pooldlib.exceptions import (InvalidPasswordError,
-                                 IllegalPasswordUpdateError,
                                  UnknownUserError,
                                  UsernameUnavailableError,
                                  EmailUnavailableError)
@@ -59,13 +58,20 @@ class TestGetUser(PooldLibPostgresBaseTest):
 
 class TestCreateUser(PooldLibPostgresBaseTest):
 
+    def test_create_user_returned(self):
+        username = uuid().hex
+        name = '%s %s' % (username[:16], username[16:])
+        email = '%s@example.com' % username
+        u = user.create(username, username, name=name, email=email)
+        assert_true(isinstance(u, UserModel))
+
     @raises(UsernameUnavailableError)
     def test_create_duplicate_username(self):
         username = uuid().hex
         name = '%s %s' % (username[:16], username[16:])
         email = '%s@example.com' % username
         self.create_user(username, name, email)
-        user.create(username, username)
+        user.create(username, username, name=name)
 
     @raises(EmailUnavailableError)
     def test_create_duplicate_email(self):
@@ -166,7 +172,15 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         name_two = '%s %s' % (username_two[:16], username_two[16:])
         email_two = '%s@example.com' % username_two
         self.create_user(username_two, name_two, email_two)
-        user.create(username_two, username_two, name=name_two, email=self.email)
+        user.update(username_two, email=self.email)
+
+    @raises(UsernameUnavailableError)
+    def test_update_with_existing_username(self):
+        username_two = uuid().hex
+        name_two = '%s %s' % (username_two[:16], username_two[16:])
+        email_two = '%s@example.com' % username_two
+        self.create_user(username_two, name_two, email_two)
+        user.update(username_two, username=self.username)
 
     def test_update_single_field(self):
         newname = uuid().hex

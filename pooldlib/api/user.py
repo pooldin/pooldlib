@@ -221,33 +221,40 @@ def create(username, password, name=None, **kwargs):
     """
     validate_password(password, exception_on_invalid=True)
 
+    if 'email' in kwargs:
+        if email_exists(kwargs['email']):
+            msg = 'The email address %s is already assigned to another user.' % kwargs['email']
+            raise EmailUnavailableError(msg)
+
     u = UserModel()
     u.username = username
     u.password = password
     if name:
         u.name = name
 
+    with transaction_session() as session:
+        try:
+            session.add(u)
+            session.commit()
+        except SQLAlchemyIntegrityError:
+            msg = "Username %s already in use." % username
+            raise UsernameUnavailableError(msg)
+
     if 'email' in kwargs:
         if email_exists(kwargs['email']):
             msg = 'The email address %s is already assigned to another user.' % kwargs['email']
             raise EmailUnavailableError(msg)
+
     meta = list()
     for (k, v) in kwargs.items():
         um = UserMetaModel()
         um.key = k
         um.value = v
+        um.user = u
         meta.append(um)
 
     with transaction_session(auto_commit=True) as session:
-        try:
-            session.add(u)
-            session.flush()
-        except SQLAlchemyIntegrityError:
-            msg = "Username %s already in use." % username
-            raise UsernameUnavailableError(msg)
-
         for um in meta:
-            um.user = u
             session.add(um)
     return u
 
@@ -310,7 +317,7 @@ def update(user, username=None, name=None, password=None, **kwargs):
         session.add(user)  # Technically not needed, but gives the context content
 
         try:
-            session.commit()
+            session.flush()
         except SQLAlchemyIntegrityError, e:
             if username is not None:
                 msg = "Username %s already in use." % username
