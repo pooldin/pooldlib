@@ -249,6 +249,7 @@ def create(username, password, name=None, **kwargs):
         for um in meta:
             um.user = u
             session.add(um)
+    return u
 
 
 def update(user, username=None, name=None, password=None, **kwargs):
