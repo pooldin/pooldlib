@@ -58,6 +58,14 @@ class TestGetUser(PooldLibPostgresBaseTest):
 
 class TestCreateUser(PooldLibPostgresBaseTest):
 
+    def setUp(self):
+        super(TestCreateUser, self).setUp()
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+        self.user_balance = self.create_balance(user=self.user, currency_code='USD')
+
     def test_create_user_returned(self):
         username = uuid().hex
         name = '%s %s' % (username[:16], username[16:])
@@ -67,21 +75,14 @@ class TestCreateUser(PooldLibPostgresBaseTest):
 
     @raises(UsernameUnavailableError)
     def test_create_duplicate_username(self):
-        username = uuid().hex
-        name = '%s %s' % (username[:16], username[16:])
-        email = '%s@example.com' % username
-        self.create_user(username, name, email)
-        user.create(username, username, name=name)
+        user.create(self.username, self.username, name=self.name)
 
     @raises(EmailUnavailableError)
     def test_create_duplicate_email(self):
-        username_one = uuid().hex
-        username_two = uuid().hex
-        name_one = '%s %s' % (username_one[:16], username_one[16:])
-        name_two = '%s %s' % (username_two[:16], username_two[16:])
-        email = '%s@example.com' % username_one
-        self.create_user(username_one, name_one, email)
-        user.create(username_two, username_two, name=name_two, email=email)
+        username = uuid().hex
+        name = '%s %s' % (username[:16], username[16:])
+        email = '%s@example.com' % self.username
+        user.create(username, username, name=name, email=email)
 
     def test_create_user_no_name_no_metadata(self):
         username = uuid().hex
