@@ -61,9 +61,6 @@ class CommunityGoalMeta(common.Model, common.EnabledMixin, common.KeyValueMixin)
     community_goal_id = db.Column(db.BigInteger(unsigned=True),
                                   db.ForeignKey('community_goal.id'),
                                   nullable=False)
-    key = db.Column(db.String(255),
-                    db.ForeignKey('community_goal_meta_key.key'),
-                    nullable=False)
 
 
 class CommunityGoalMetaKey(common.Model, common.EnabledMixin):
