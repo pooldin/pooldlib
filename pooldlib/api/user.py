@@ -32,8 +32,8 @@ def get(user_id):
     ``NoneType`` is returned.
 
     :param user_id: Identifier for the user, either their associated
-                    username or email address.
-    :type user_id: string
+                    username, email address or id.
+    :type user_id: :class:`pooldlib.postgresql.models.User`, string or long
 
     :returns: :class:`pooldlib.postgresql.models.User` or ``NoneType``
     """
