@@ -37,6 +37,9 @@ def get(user_id):
 
     :returns: :class:`pooldlib.postgresql.models.User` or ``NoneType``
     """
+    if user_id is None:
+        return None
+
     if isinstance(user_id, UserModel):
         if not user_id.enabled:
             return None
@@ -117,6 +120,7 @@ def connections(user, as_organizer=True):
 
     :returns: list
     """
+    raise NotImplementedError()
 
 
 # TODO :: Enable pagination
@@ -174,7 +178,8 @@ def transfers(user, xfer_to=None, xfer_from=None, currency=None):
 
 def verify_password(user, password):
     """Verify that the givin password is the password associated with
-    a given User data model instance.
+    a given User data model instance. Returns True if the password given
+    matches that of ``user``.
 
     :param user: User to use in password comparison.
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
@@ -182,6 +187,8 @@ def verify_password(user, password):
     :param password: The password to verify against the stored
                      password for the user.
     :type password: string
+
+    :returns: boolean
 
     :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """

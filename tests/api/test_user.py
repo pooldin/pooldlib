@@ -77,7 +77,6 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         self.create_user(username_one, name_one, email)
         user.create(username_two, username_two, name=name_two, email=email)
 
-
     def test_create_user_no_name_no_metadata(self):
         username = uuid().hex
         user.create(username, username + '1')
