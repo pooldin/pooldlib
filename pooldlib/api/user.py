@@ -264,7 +264,8 @@ def update(user, username=None, name=None, password=None, **kwargs):
     kwargs will be assumed to be metadata. Existing metadata will be updated
     to the newly supplied value, and any new metadata keys will be associated
     with the user. To reset a user's password, use
-    :func:`pooldlib.api.user.reset_password`.
+    :func:`pooldlib.api.user.reset_password`. To delete a user's metadata, pass ``None``
+    as the value for the to be deleted key in the kwarg key-value pair.
 
     :param user: User for which to update ``User`` model data.
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
@@ -302,9 +303,13 @@ def update(user, username=None, name=None, password=None, **kwargs):
     create_meta = [(k, v) for (k, v) in kwargs.items() if not hasattr(user, k)]
 
     meta_delta = list()
+    meta_remove = list()
     for m in update_meta:
         m.value = kwargs[m.key]
-        meta_delta.append(m)
+        if m.value is None:
+            meta_remove.append(m)
+        else:
+            meta_delta.append(m)
 
     for (k, v) in create_meta:
         m = UserMetaModel()
@@ -327,6 +332,8 @@ def update(user, username=None, name=None, password=None, **kwargs):
         for m in meta_delta:
             session.add(m)
             session.flush()
+        for m in meta_remove:
+            session.delete(m)
 
         session.commit()
 
