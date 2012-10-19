@@ -1,5 +1,9 @@
 from .balance import Balance
-from .community import Community
+from .community import (Community,
+                        CommunityAssociation,
+                        Invitee,
+                        CommunityGoal,
+                        CommunityGoalMeta)
 from .currency import Currency
 from .fee import Fee
 from .ledger import InternalLedger, ExternalLedger
