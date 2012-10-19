@@ -17,14 +17,14 @@ class BalanceMixin(object):
         :param for_update: If `True` the `FOR UPDATE` directive will be used, locking the row for an `UPDATE` query.
         :type for_update: boolean, default `False`
         """
-        from pooldlib.api import Balance
+        from pooldlib.api import balance
         from pooldlib.postgresql import (db,
                                          Currency as CurrencyModel,
                                          Balance as BalanceModel)
 
         if isinstance(currency, basestring):
             currency = CurrencyModel.get(currency)
-        balance = Balance.get(for_update=for_update, user_id=self.id, currency_id=currency.id)
+        balance = balance.get(for_update=for_update, user_id=self.id, currency_id=currency.id)
 
         # If we don't find a balance for the user, create if requested to
         if not balance and get_or_create:
