@@ -7,13 +7,16 @@ pooldlib.api.user
 """
 import re
 
+from sqlalchemy.exc import IntegrityError as SQLAlchemyIntegrityError
 from sqlalchemy.orm.attributes import manager_of_class
 
 from pooldlib.generators import alphanumeric_string
-from pooldlib.exceptions import (IllegalPasswordUpdateError,
-                                 InvalidPasswordError,
-                                 UnknownUserError)
+from pooldlib.exceptions import (InvalidPasswordError,
+                                 UnknownUserError,
+                                 EmailUnavailableError,
+                                 UsernameUnavailableError)
 from pooldlib.sqlalchemy import transaction_session
+from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
                                  UserMeta as UserMetaModel)
 
@@ -204,7 +207,8 @@ def create(username, password, name=None, **kwargs):
     :type kwargs: kwarg dictionary
 
     :raises: :class:`pooldlib.exceptions.InvalidPasswordError`
-             :class:`pooldlib.exceptions.UnknownUserError`
+             :class:`pooldlib.exceptions.UsernameUnavailableError`
+             :class:`pooldlib.exceptions.EmailUnavailableError`
 
     :returns: :class:`pooldlib.postgresql.models.User`
     """
@@ -215,6 +219,11 @@ def create(username, password, name=None, **kwargs):
     u.password = password
     if name:
         u.name = name
+
+    if 'email' in kwargs:
+        if email_exists(kwargs['email']):
+            msg = 'The email address %s is already assigned to another user.' % kwargs['email']
+            raise EmailUnavailableError(msg)
     meta = list()
     for (k, v) in kwargs.items():
         um = UserMetaModel()
@@ -223,15 +232,19 @@ def create(username, password, name=None, **kwargs):
         meta.append(um)
 
     with transaction_session(auto_commit=True) as session:
-        session.add(u)
-        session.flush()
+        try:
+            session.add(u)
+            session.flush()
+        except SQLAlchemyIntegrityError:
+            msg = "Username %s already in use." % username
+            raise UsernameUnavailableError(msg)
 
         for um in meta:
             um.user = u
             session.add(um)
 
 
-def update(user, username=None, name=None, **kwargs):
+def update(user, username=None, name=None, password=None, **kwargs):
     """Update properties of a specific User data model instance.  Any unspecified
     kwargs will be assumed to be metadata. Existing metadata will be updated
     to the newly supplied value, and any new metadata keys will be associated
@@ -249,16 +262,11 @@ def update(user, username=None, name=None, **kwargs):
                    as metadata.
     :type kwargs: kwarg dictionary
 
-    :raises: :class:`pooldlib.exceptions.IllegalPasswordUpdateError`
+    :raises: :class:`pooldlib.exceptions.InvalidPasswordError`
              :class:`pooldlib.exceptions.UnknownUserError`
 
     :returns: :class:`pooldlib.postgresql.models.User`
     """
-    if 'password' in kwargs:
-        msg = "You must use the pooldlib.api.user.set_password interface to "\
-              "change a user's password."
-        raise IllegalPasswordUpdateError(msg)
-
     user = get(user)
     if not user:
         raise UnknownUserError()
@@ -266,6 +274,14 @@ def update(user, username=None, name=None, **kwargs):
         user.update_field('username', username)
     if name:
         user.update_field('name', name)
+    if password:
+        validate_password(password, exception_on_invalid=True)
+        user.update_field('password', password)
+
+    if 'email' in kwargs:
+        if email_exists(kwargs['email'], user=user):
+            msg = 'The email address %s is already assigned to another user.' % kwargs['email']
+            raise EmailUnavailableError(msg)
 
     update_meta = [m for m in user.metadata if m.key in kwargs]
     create_meta = [(k, v) for (k, v) in kwargs.items() if not hasattr(user, k)]
@@ -282,11 +298,22 @@ def update(user, username=None, name=None, **kwargs):
         m.user = user
         meta_delta.append(m)
 
-    with transaction_session(auto_commit=True) as session:
+    with transaction_session() as session:
         session.add(user)  # Technically not needed, but gives the context content
+
+        try:
+            session.commit()
+        except SQLAlchemyIntegrityError, e:
+            if username is not None:
+                msg = "Username %s already in use." % username
+                raise UsernameUnavailableError(msg)
+            raise e
+
         for m in meta_delta:
             session.add(m)
             session.flush()
+
+        session.commit()
 
     return user
 
@@ -307,7 +334,7 @@ def set_password(user, password):
 
     :returns: :class:`pooldlib.postgresql.models.User`
     """
-    validate_password(password)
+    validate_password(password, exception_on_invalid=True)
     user = get(user)
     if not user:
         raise UnknownUserError()
@@ -399,3 +426,27 @@ def username_exists(username):
     query = UserModel.query
     query = query.filter_by(username=username, enabled=True)
     return query.count() > 0
+
+
+def email_exists(email, user=None):
+    """Checks whether an email exists. Returns True if the email exists or
+    False if the email does not exist.
+
+    Optionally, if ``user`` is defined, will return False if it is associated
+    with given user.
+
+    :param username: The username to check for existence.
+    :type username: string
+
+    :returns: `bool`
+    """
+    sql = """SELECT user_id
+             FROM user_meta
+             WHERE key = 'email'
+                AND value = '%s';
+          """
+    ret = db.session.execute(sql % email).first()
+    if ret and user is not None:
+        user = get(user)
+        return ret[0] != user.id
+    return ret is not None

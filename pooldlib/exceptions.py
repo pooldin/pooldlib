@@ -32,6 +32,16 @@ class InvalidPasswordError(UserAPIError):
 class UnknownUserError(UserAPIError):
     """Raised when an attempt to access an unknown user is made.
     """
+
+class UsernameUnavailableError(UserAPIError):
+    """Raised when an attempt is made to create a user with a username
+    which already exists in the system.
+    """
+
+class EmailUnavailableError(UserAPIError):
+    """Raised when an attempt is made to associate a user with an email
+    address already paired with another user.
+    """
 ##################################
 
 

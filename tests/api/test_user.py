@@ -4,7 +4,9 @@ from nose.tools import raises, assert_equal, assert_true, assert_false
 
 from pooldlib.exceptions import (InvalidPasswordError,
                                  IllegalPasswordUpdateError,
-                                 UnknownUserError)
+                                 UnknownUserError,
+                                 UsernameUnavailableError,
+                                 EmailUnavailableError)
 from pooldlib.api import user
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
@@ -56,6 +58,25 @@ class TestGetUser(PooldLibPostgresBaseTest):
 
 
 class TestCreateUser(PooldLibPostgresBaseTest):
+
+    @raises(UsernameUnavailableError)
+    def test_create_duplicate_username(self):
+        username = uuid().hex
+        name = '%s %s' % (username[:16], username[16:])
+        email = '%s@example.com' % username
+        self.create_user(username, name, email)
+        user.create(username, username)
+
+    @raises(EmailUnavailableError)
+    def test_create_duplicate_email(self):
+        username_one = uuid().hex
+        username_two = uuid().hex
+        name_one = '%s %s' % (username_one[:16], username_one[16:])
+        name_two = '%s %s' % (username_two[:16], username_two[16:])
+        email = '%s@example.com' % username_one
+        self.create_user(username_one, name_one, email)
+        user.create(username_two, username_two, name=name_two, email=email)
+
 
     def test_create_user_no_name_no_metadata(self):
         username = uuid().hex
@@ -118,9 +139,17 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
-    @raises(IllegalPasswordUpdateError)
-    def test_update_with_password(self):
+    @raises(InvalidPasswordError)
+    def test_update_with_password_invalid_password(self):
         user.update(self.username, password='thisshouldfail')
+
+    def test_update_with_password(self):
+        new_password = 'abcde123'
+        old_pass_encrypt = self.user.password
+        user.update(self.username, password=new_password)
+
+        assert_false(old_pass_encrypt == self.user.password)
+        assert_true(self.user.is_password(new_password))
 
     @raises(UnknownUserError)
     def test_update_non_existant_user(self):
@@ -131,6 +160,14 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         self.user.enabled = False
         self.session.commit()
         user.update(self.username, name='nonexistant')
+
+    @raises(EmailUnavailableError)
+    def test_update_with_existing_email(self):
+        username_two = uuid().hex
+        name_two = '%s %s' % (username_two[:16], username_two[16:])
+        email_two = '%s@example.com' % username_two
+        self.create_user(username_two, name_two, email_two)
+        user.create(username_two, username_two, name=name_two, email=self.email)
 
     def test_update_single_field(self):
         newname = uuid().hex
