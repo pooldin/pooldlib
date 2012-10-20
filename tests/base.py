@@ -2,7 +2,7 @@ import unittest
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from pooldlib.postgresql import db, User, UserMeta, Community, Currency, Balance
+from pooldlib.postgresql import db, User, UserMeta, Community, CommunityGoal, CommunityGoalMeta, Currency, Balance
 
 from tests import create_fixtures
 
@@ -32,7 +32,7 @@ class PooldLibBaseTest(unittest.TestCase):
         if start is None:
             start = datetime.utcnow()
         if end is None:
-            end = start + timedelta(months=1)
+            end = start + timedelta(days=30)
 
         c = Community()
         c.name = name
@@ -43,6 +43,31 @@ class PooldLibBaseTest(unittest.TestCase):
 
         self.commit_model(c)
         return c
+
+    def create_community_goal(self, community_id, type, start=None, end=None):
+        if start is None:
+            start = datetime.utcnow()
+        if end is None:
+            end = start + timedelta(days=7)
+        c = Community.get(community_id)
+        cg = CommunityGoal()
+        cg.communtiy = c
+        cg.enabled = True
+        cg.start = start
+        cg.end = end
+        cg.type = type
+        self.commit_model(cg)
+        return cg
+
+    def create_community_goal_meta(self, community_goal_id, **kwargs):
+        cg = CommunityGoal.get(community_goal_id)
+        for (k, v) in kwargs.items():
+            cgm = CommunityGoalMeta()
+            cgm.key = k
+            cgm.value = v
+            cgm.community_goal = cg
+            self.commit_model(cgm)
+        return cg
 
     def create_balance(self, user=None, community=None, currency_code=None, amount=Decimal('50.0000')):
         if not currency_code:
