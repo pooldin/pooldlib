@@ -46,6 +46,23 @@ class EmailUnavailableError(UserAPIError):
 
 
 ##################################
+### Community API Related Exceptions
+class CommunityAPIError(PooldlibError):
+    """Base class for exceptions raise by the Community API.
+    """
+
+
+class UnknownCommunityError(CommunityAPIError):
+    """Raised when an attempt to access an unknown community is made.
+    """
+
+
+class InvalidUserRoleError(CommunityAPIError):
+    """Raised when an attempt is made to associate a user with a community
+    with an invalid role name.
+    """
+
+##################################
 ### Transaction API Related Exceptions
 class TransactAPIError(PooldlibError):
     """Base class for errors encountered during operation of
