@@ -144,6 +144,8 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
+        self.create_user_meta(self.user, meta_key_one='meta value one')
+
     @raises(InvalidPasswordError)
     def test_update_with_password_invalid_password(self):
         user.update(self.username, password='thisshouldfail')
@@ -235,6 +237,15 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
                                              .first()
         assert_equal(newkey, check_user_meta.key)
         assert_equal(newvalue, check_user_meta.value)
+
+    def test_remove_meta(self):
+        old_meta_value = self.user.meta_key_one
+        test_user = UserModel.query.filter_by(username=self.username).first()
+        assert_true(hasattr(test_user, 'meta_key_one'))
+        assert_equal(old_meta_value, test_user.meta_key_one)
+
+        user.update(self.user.username, meta_key_one=None)
+        assert_true(not hasattr(test_user, 'meta_key_one'))
 
 
 class TestResetPassword(PooldLibPostgresBaseTest):
