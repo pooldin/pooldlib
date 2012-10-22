@@ -2,7 +2,15 @@ import unittest
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from pooldlib.postgresql import db, User, UserMeta, Community, CommunityGoal, CommunityGoalMeta, Currency, Balance
+from pooldlib.postgresql import (db,
+                                 User,
+                                 UserMeta,
+                                 Balance,
+                                 Currency,
+                                 Community,
+                                 CommunityAssociation,
+                                 CommunityGoal,
+                                 CommunityGoalMeta)
 
 from tests import create_fixtures
 
@@ -28,6 +36,16 @@ class PooldLibBaseTest(unittest.TestCase):
 
         return u
 
+    def create_user_meta(self, user, **kwargs):
+        if isinstance(user, (int, long)):
+            user = User.query.get(user)
+        for (k, v) in kwargs.items():
+            um = UserMeta()
+            um.key = k
+            um.value = v
+            um.user = user
+            self.commit_model(um)
+
     def create_community(self, name, description, start=None, end=None):
         if start is None:
             start = datetime.utcnow()
@@ -44,23 +62,35 @@ class PooldLibBaseTest(unittest.TestCase):
         self.commit_model(c)
         return c
 
-    def create_community_goal(self, community_id, type, start=None, end=None):
+    def create_community_association(self, community, user, role):
+        ca = CommunityAssociation()
+        ca.user = user
+        ca.community = community
+        ca.role = role
+        self.commit_model(ca)
+        return ca
+
+    def create_community_goal(self, community, name, description, type, start=None, end=None):
         if start is None:
             start = datetime.utcnow()
         if end is None:
             end = start + timedelta(days=7)
-        c = Community.get(community_id)
+        if not isinstance(community, Community):
+            community = Community.query.get(community)
         cg = CommunityGoal()
-        cg.communtiy = c
+        community.goals.append(cg)
         cg.enabled = True
+        cg.name = name
+        cg.description = description
         cg.start = start
         cg.end = end
         cg.type = type
         self.commit_model(cg)
+
         return cg
 
     def create_community_goal_meta(self, community_goal_id, **kwargs):
-        cg = CommunityGoal.get(community_goal_id)
+        cg = CommunityGoal.query.get(community_goal_id)
         for (k, v) in kwargs.items():
             cgm = CommunityGoalMeta()
             cgm.key = k
