@@ -19,6 +19,8 @@ class CommunityAssociation(common.Model, common.EnabledMixin):
                              nullable=False)
     role = db.Column(db.Enum('organizer', 'participant', name='community_role_enum'))
 
+    __table_args__ = (db.UniqueConstraint(user_id, community_id), {})
+
 
 class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
     email = db.Column(db.String(255),
@@ -34,17 +36,17 @@ class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
                         db.ForeignKey('user.id'),
                         nullable=False)
 
-    db.UniqueConstraint('community_goal_id', 'email')
+    __table_args__ = (db.UniqueConstraint(community_id, email), {})
 
 
-class CommunityGoal(common.ConfigurationModel, common.ActiveMixin):
+class CommunityGoal(common.ConfigurationModel, common.ActiveMixin, common.MetadataMixin):
     __tablename__ = 'community_goal'
 
     community = db.relationship('Community', backref='goals', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
-    type = db.Column(db.Enum('amazon.com-purchase', 'amazon.com-giftcard', name='community_goal_type_enum'))
+    type = db.Column(db.Enum('fund-raiser', 'project', 'group-purchase', name='community_goal_type_enum'))
     purchase = db.relationship('Purchase',
                                backref='community_goal',
                                uselist=False,
