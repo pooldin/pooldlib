@@ -57,10 +57,28 @@ class UnknownCommunityError(CommunityAPIError):
     """
 
 
+class UnknownCommunityGoalError(CommunityAPIError):
+    """Raised when an attempt to access an unknown community goal is made.
+    """
+
+
 class InvalidUserRoleError(CommunityAPIError):
     """Raised when an attempt is made to associate a user with a community
     with an invalid role name.
     """
+
+
+class DuplicateCommunityUserAssociationError(CommunityAPIError):
+    """Raised when an attempt is made to associate a user with a community
+    with an invalid role name.
+    """
+
+
+class UnknownCommunityAssociationError(CommunityAPIError):
+    """Raised when an attempt is made to access an unknown user/community
+    association.
+    """
+
 
 ##################################
 ### Transaction API Related Exceptions
