@@ -266,6 +266,8 @@ def update(user, username=None, name=None, password=None, **kwargs):
     with the user. :func:`pooldlib.api.user.reset_password` can be used to update
     a users password as well. To delete a user's metadata, pass ``None``
     as the value for the to be deleted key in the kwarg key-value pair.
+    The ``name`` property of the User model can be cleared by passing
+    an empty string ('') as the value for the name kwarg.
 
     :param user: User for which to update ``User`` model data.
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
@@ -288,8 +290,9 @@ def update(user, username=None, name=None, password=None, **kwargs):
         raise UnknownUserError()
     if username:
         user.update_field('username', username)
-    if name:
-        user.update_field('name', name)
+    if name is not None:
+        name = None if name == '' else name
+        user.update_field('name', name, nullable=True)
     if password:
         validate_password(password, exception_on_invalid=True)
         user.update_field('password', password)

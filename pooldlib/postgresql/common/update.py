@@ -7,6 +7,9 @@ class FieldUpdateMixin(object):
             self.update_field(field, value, nullable=nullable)
 
     def update_field(self, field, new_value, nullable=False):
+        # TODO :: The value of ``nullable`` should be retrieved
+        # TODO :: from the column definition, not be a parameter
+        # TODO :: passed to the function...
         if new_value is None and not nullable:
             return False
 

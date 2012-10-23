@@ -147,6 +147,14 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
 
         self.create_user_meta(self.user, meta_key_one='meta value one')
 
+    def test_clear_name_attribute(self):
+        check_user = UserModel.query.filter_by(username=self.username).first()
+        assert_equal(self.name, check_user.name)
+
+        user.update(self.username, name='')
+        check_user = UserModel.query.filter_by(username=self.username).first()
+        assert_true(check_user.name is None)
+
     @raises(InvalidPasswordError)
     def test_update_with_password_invalid_password(self):
         user.update(self.username, password='thisshouldfail')
