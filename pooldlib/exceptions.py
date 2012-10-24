@@ -5,9 +5,41 @@ pooldlib.exceptions
 .. currentmodule:: pooldlib.exceptions
 
 """
+
+
 class PooldlibError(Exception):
     """Base class for exceptions raised by pooldlib.
     """
+
+
+class ConfigurationError(PooldlibError):
+    """Raised when a undefined configuration attribute is accessed
+    """
+
+
+##################################
+### Communication API Related Exceptions
+class CommunicationAPIError(PooldlibError):
+    """Base class for exceptions raised by the Communication API.
+    """
+
+
+class SMTPConnectionNotInitilizedError(CommunicationAPIError):
+    """Raised if an attempt is made to send an email before the associated
+    smtplib.SMTP object has been initialized.
+    """
+
+
+class NoEmailRecipientsError(CommunicationAPIError):
+    """Raised if an attempt is made to send an email prior to the sender address
+    being set.
+    """
+
+class NoContentEmailError(CommunicationAPIError):
+    """Raised if an attempt is made to send an email prior to it's content
+    being set.
+    """
+##################################
 
 
 ##################################
@@ -33,10 +65,12 @@ class UnknownUserError(UserAPIError):
     """Raised when an attempt to access an unknown user is made.
     """
 
+
 class UsernameUnavailableError(UserAPIError):
     """Raised when an attempt is made to create a user with a username
     which already exists in the system.
     """
+
 
 class EmailUnavailableError(UserAPIError):
     """Raised when an attempt is made to associate a user with an email

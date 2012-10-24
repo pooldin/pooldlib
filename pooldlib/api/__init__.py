@@ -9,3 +9,4 @@ import balance
 import community
 from .transact import Transact
 import user
+import communication
