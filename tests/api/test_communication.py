@@ -34,6 +34,7 @@ class TestLoginSMTP(PooldLibPostgresBaseTest):
         self.addCleanup(self.SMTP_patcher.stop)
 
     def test_login(self):
+        self.email._connected = True
         assert_true(self.email._connected)
         assert_false(self.email._logged_in)
 
@@ -61,6 +62,7 @@ class TestDisconnectSMTP(PooldLibPostgresBaseTest):
 
     def test_simple_disconnect(self):
         self.email._logged_in = True
+        self.email._connected = True
         assert_true(self.email._connected)
         assert_true(self.email._logged_in)
 
@@ -90,12 +92,18 @@ class TestSendEmail(PooldLibPostgresBaseTest):
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
 
+    @raises(SMTPConnectionNotInitilizedError)
+    def test_send_not_connected(self):
+        self.email.send()
+
     @raises(NoEmailRecipientsError)
     def test_send_no_recipients(self):
+        self.email._connected = True
         self.email.msg_root = 'Content'
         self.email.send()
 
     def test_send_with_recipients(self):
+        self.email._connected = True
         self.email.msg_root = MagicMock()
         self.email.msg_root.as_string = Mock(return_value='Content')
 
@@ -104,7 +112,6 @@ class TestSendEmail(PooldLibPostgresBaseTest):
         address_one = 'Test User One <test_user_one@example.com>'
         address_two = 'Test User Two <test_user_two@example.com>'
 
-        to_string = '%s, %s' % (address_one, address_two)
         self.email.recipients = [address_one, address_two]
         self.email.send()
 
