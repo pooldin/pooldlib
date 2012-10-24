@@ -39,3 +39,6 @@ pip-log.txt
 
 .webassets-cache
 docs/_build
+
+# Vim related ignores
+.ropeproject/
