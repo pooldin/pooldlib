@@ -130,3 +130,16 @@ class InsufficentFundsTransactionError(TransactAPIError):
     """An attempt was made to execute a transaction with insufficient
     funds in the target balance."""
 ##################################
+
+
+##################################
+### Internal Exceptions
+class YourFiredBitch(Exception):
+    """That's right.
+    """
+
+
+class GoWorkForBallmerError(YourFiredBitch):
+    """Raised when you don't follow web standards.
+    """
+##################################

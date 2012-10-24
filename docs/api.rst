@@ -106,6 +106,8 @@ API
    :members:
 .. automodule:: pooldlib.api.user
    :members:
+.. automodule:: pooldlib.api.communication
+   :members:
 .. automodule:: pooldlib.api.community
    :members:
 

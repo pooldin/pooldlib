@@ -31,9 +31,9 @@ def communities(community_ids, filter_inactive=True):
     is `True`, return only those whos `start` and `endtime` make it currently active.
     If ``community_ids`` is `None`, return all communities.
 
-    :param community_ids: List of community IDs to return. Pass `None`` to return
+    :param community_ids: List of community IDs to return. Pass `None` to return
                           **all** communities.
-    :type community_id: list of ``long``s.
+    :type community_id: list of type `long`.
     :param filter_inactive: Return communities only if they are currently active,
                             that is if the current datetime is not outside of
                             the community's start and end times. Default `False`.

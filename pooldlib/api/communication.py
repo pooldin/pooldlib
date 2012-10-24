@@ -270,7 +270,7 @@ class HTMLEmail(Email):
     def set_content(self, html, text):
         """Set the email content. You **must** provide both HTML and plain text
         versions of the email to comply with standards.  If you don't want to,
-        you should consider quitting your job and go to work at Microsoft.
+        you should consider quitting your job and going to work for Microsoft.
 
         :param html: The html version of the email to be sent. Any styling needed
                      for the email should be embedded in the HTML. Images can
@@ -278,6 +278,8 @@ class HTMLEmail(Email):
         :type html: string
         :param text: The plain text version of the email to be sent.
         :type text: string
+
+        :raises: :class:`pooldlib.exceptions.GoWorkForBallmerError`
         """
         # For the curious, some email clients are too daft to pay attention to
         # content-type, and instead display the last alternative they
@@ -288,13 +290,7 @@ class HTMLEmail(Email):
         # NOTE :: Learn from my pain. <brian@poold.in>
         # NOTE :: http://www.violato.net/blog/others/110-gmail-email-formatting-issue-with-multipartalternative-mime-entry
         if not text:
-            class YourFiredBitch(Exception):
-                """That's right.
-                """
-
-            class GoWorkForBalmerError(YourFiredBitch):
-                """Raised when you don't follow the rules.
-                """
+            from pooldlib.exceptions import GoWorkForBalmerError
             msg = "You were warned!"
             raise GoWorkForBalmerError(msg)
         text = MIMEText(text.encode('utf8'), _subtype='plain', _charset='utf-8')
