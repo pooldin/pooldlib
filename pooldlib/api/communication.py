@@ -67,6 +67,7 @@ class Email(object):
         self._host = host
         self._port = port
         self._local_hostname = local_hostname
+        self._use_ssl = use_ssl
         self._connected = False
         self._logged_in = False
         charset.add_charset('utf-8', charset.QP, charset.QP)
