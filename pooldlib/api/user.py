@@ -44,8 +44,8 @@ def get_by_username(username):
     """Return a user from the database based on their associated username.
     If no user is found `None` is returned.
 
-    :param email: Username to use in performing user lookup.
-    :type email: string
+    :param username: Username to use in performing user lookup.
+    :type username: string
 
     :returns: :class:`pooldlib.postgresql.models.User` or `None`
     """
@@ -76,8 +76,7 @@ def get_balance(user, currency):
     the given user identifier.
 
     :param user: User for which to retrieve balance information.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param currency: Limit results to those associated with ``currency``.
     :type currency: Either string or
                     :class:`pooldlib.postgresql.models.Currency`
@@ -93,8 +92,7 @@ def associate_stripe_token(user, stripe_token, force=False):
     ``force=True``.
 
     :param user: User for which to associate the retrieved Strip user id.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param stripe_token: The single use token returned by Stripe, usually in
                          response to a credit card authorization via stripe.js
     :type stripe_token: string
@@ -128,8 +126,7 @@ def communities(user):
     """Return all communities associated with the given user identifier.
 
     :param user: User for which to return community connections.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     """
     raise NotImplementedError()
 
@@ -139,8 +136,7 @@ def transactions(user, party=None, currency=None):
     """Return all transactions associated with the given user identifier.
 
     :param user: User for which to return transaction data.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param party: If given, filter transactions to those associated with the
                   given ``party``.
     :type party: string
@@ -155,8 +151,7 @@ def transactions(user, party=None, currency=None):
 def transfers(user, xfer_to=None, xfer_from=None, currency=None):
     """
     :param user: User for which to return transfer data.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param xfer_to: If given, filter transfers to those in which the user
                     transferred **to** ``xfer_to``
     :type xfer_from: string identifier,
@@ -365,8 +360,7 @@ def reset_password(user):
     instance.
 
     :param user: User for which to reset password.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
 
     :returns: The new password for the User data model instance as a ``string``
     """
