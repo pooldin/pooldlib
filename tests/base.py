@@ -70,7 +70,9 @@ class PooldLibBaseTest(unittest.TestCase):
         self.commit_model(ca)
         return ca
 
-    def create_community_goal(self, community, name, description, type, start=None, end=None):
+    def create_community_goal(self, community, name, description, type=None, start=None, end=None):
+        if type is None:
+            type = 'project'
         if start is None:
             start = datetime.utcnow()
         if end is None:

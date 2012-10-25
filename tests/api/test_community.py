@@ -527,12 +527,16 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         self.com_id = self.community.id
 
     def test_simple_add(self):
-        community.add_goal(self.com_id, 'Test Simple Add', 'To Test Simple Add')
+        community.add_goal(self.com_id,
+                           'Test Simple Add',
+                           'To Test Simple Add',
+                           'project')
         goal = CommunityGoalModel.query.filter_by(community_id=self.com_id).all()
         assert_equal(1, len(goal))
         goal = goal[0]
         assert_equal('Test Simple Add', goal.name)
         assert_equal('To Test Simple Add', goal.description)
+        assert_equal('project', goal.type)
         assert_true(isinstance(goal.start, datetime))
         assert_true(goal.end is None)
 
@@ -542,6 +546,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         community.add_goal(self.com_id,
                            'Test Add Start End Specified',
                            'To Test Add Start End Specified',
+                           'project',
                            start=start,
                            end=end)
         goal = CommunityGoalModel.query.filter_by(community_id=self.com_id).all()
@@ -549,6 +554,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         goal = goal[0]
         assert_equal('Test Add Start End Specified', goal.name)
         assert_equal('To Test Add Start End Specified', goal.description)
+        assert_equal('project', goal.type)
         assert_equal(pytz.UTC.localize(start), goal.start)
         assert_equal(pytz.UTC.localize(end), goal.end)
 
@@ -556,6 +562,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         community.add_goal(self.com_id,
                            'Test Add With Metadata',
                            'To Test Add With Metadata',
+                           'project',
                            mdata_key_one='mdata value one',
                            mdata_key_two='mdata value two')
         goal = CommunityGoalModel.query.filter_by(community_id=self.com_id).all()
@@ -563,6 +570,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         goal = goal[0]
         assert_equal('Test Add With Metadata', goal.name)
         assert_equal('To Test Add With Metadata', goal.description)
+        assert_equal('project', goal.type)
         assert_true(isinstance(goal.start, datetime))
         assert_true(goal.end is None)
         assert_equal(goal.mdata_key_one, u'mdata value one')
