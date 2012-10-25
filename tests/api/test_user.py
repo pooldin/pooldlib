@@ -34,25 +34,25 @@ class TestGetUser(PooldLibPostgresBaseTest):
         self.session = db.session
 
     def test_get_with_username(self):
-        u = user.get(self.username_a)
+        u = user.get_by_username(self.username_a)
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
 
     def test_get_with_email(self):
-        u = user.get(self.email_a)
+        u = user.get_by_email(self.email_a)
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
 
     def test_get_non_existant_user(self):
-        non_user = user.get('nonexistant')
+        non_user = user.get_by_username('nonexistant')
         assert_true(non_user is None)
 
     def test_get_disabled_user(self):
         self.user_a.enabled = False
         self.session.commit()
-        disabled_user = user.get(self.username_a)
+        disabled_user = user.get_by_username(self.username_a)
         assert_true(disabled_user is None)
 
 
@@ -151,7 +151,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         check_user = UserModel.query.filter_by(username=self.username).first()
         assert_equal(self.name, check_user.name)
 
-        user.update(self.username, name='')
+        user.update(self.user, name='')
         check_user = UserModel.query.filter_by(username=self.username).first()
         assert_true(check_user.name is None)
 
@@ -162,36 +162,26 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
     def test_update_with_password(self):
         new_password = 'abcde123'
         old_pass_encrypt = self.user.password
-        user.update(self.username, password=new_password)
+        user.update(self.user, password=new_password)
 
         assert_false(old_pass_encrypt == self.user.password)
         assert_true(self.user.is_password(new_password))
-
-    @raises(UnknownUserError)
-    def test_update_non_existant_user(self):
-        user.update('nonexistant', name='nonexistant')
-
-    @raises(UnknownUserError)
-    def test_update_disabled_user(self):
-        self.user.enabled = False
-        self.session.commit()
-        user.update(self.username, name='nonexistant')
 
     @raises(EmailUnavailableError)
     def test_update_with_existing_email(self):
         username_two = uuid().hex
         name_two = '%s %s' % (username_two[:16], username_two[16:])
         email_two = '%s@example.com' % username_two
-        self.create_user(username_two, name_two, email_two)
-        user.update(username_two, email=self.email)
+        new_user = self.create_user(username_two, name_two, email_two)
+        user.update(new_user, email=self.email)
 
     @raises(UsernameUnavailableError)
     def test_update_with_existing_username(self):
         username_two = uuid().hex
         name_two = '%s %s' % (username_two[:16], username_two[16:])
         email_two = '%s@example.com' % username_two
-        self.create_user(username_two, name_two, email_two)
-        user.update(username_two, username=self.username)
+        new_user = self.create_user(username_two, name_two, email_two)
+        user.update(new_user, username=self.username)
 
     def test_update_single_field(self):
         newname = uuid().hex
@@ -253,7 +243,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         assert_true(hasattr(test_user, 'meta_key_one'))
         assert_equal(old_meta_value, test_user.meta_key_one)
 
-        user.update(self.user.username, meta_key_one=None)
+        user.update(self.user, meta_key_one=None)
         assert_true(not hasattr(test_user, 'meta_key_one'))
 
 
@@ -276,16 +266,6 @@ class TestResetPassword(PooldLibPostgresBaseTest):
         assert_false(old_pass_encrypt == self.user.password)
         assert_true(self.user.is_password(new_password))
 
-    @raises(UnknownUserError)
-    def test_password_reset_non_existant_user(self):
-        user.reset_password('nonexistant')
-
-    @raises(UnknownUserError)
-    def test_password_reset_disabled_user(self):
-        self.user.enabled = False
-        self.session.commit()
-        user.verify_password(self.username, 'okpass1')
-
 
 class TestDeactivateUser(PooldLibPostgresBaseTest):
 
@@ -299,18 +279,9 @@ class TestDeactivateUser(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
-    def test_disabled_user_username_lookup(self):
-        user.disable(self.username)
-        assert_true(user.get(self.username) is None)
-
-    def test_disabled_user_id_lookup(self):
-        id = self.user.id
-        user.disable(id)
-        assert_true(user.get(id) is None)
-
-    def test_disabled_user_email_lookup(self):
-        user.disable(self.email)
-        assert_true(user.get(self.email) is None)
+    def test_disabled_user(self):
+        user.disable(self.user)
+        assert_true(user.get_by_email(self.email) is None)
 
 
 class TestVerifyPassword(PooldLibPostgresBaseTest):
@@ -327,33 +298,11 @@ class TestVerifyPassword(PooldLibPostgresBaseTest):
 
     def test_verify_correct_password(self):
         password = self.user.username + '1'
-        assert_true(user.verify_password(self.username, password))
+        assert_true(user.verify_password(self.user, password))
 
     def test_verify_incorrect_password(self):
         password = 'incorrect-password'
-        assert_false(user.verify_password(self.username, password))
-
-    @raises(UnknownUserError)
-    def test_verify_non_existant_user(self):
-        user.verify_password('nonexistant', 'badpass')
-
-    @raises(UnknownUserError)
-    def test_verify_disabled_user_username_lookup(self):
-        self.user.enabled = False
-        self.session.commit()
-        user.verify_password(self.username, 'okpass1')
-
-    @raises(UnknownUserError)
-    def test_verify_disabled_user_id_lookup(self):
-        self.user.enabled = False
-        self.session.commit()
-        user.verify_password(self.user.id, 'okpass1')
-
-    @raises(UnknownUserError)
-    def test_verify_disabled_user_email_lookup(self):
-        self.user.enabled = False
-        self.session.commit()
-        user.verify_password(self.user.id, 'okpass1')
+        assert_false(user.verify_password(self.user, password))
 
 
 class TestValidatePassword(PooldLibPostgresBaseTest):

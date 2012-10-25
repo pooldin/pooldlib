@@ -152,37 +152,11 @@ class TestCreateCommunity(PooldLibPostgresBaseTest):
         ass = ass[0]
         assert_equal('organizer', ass.role)
 
-    def test_organizer_association_with_username(self):
+    def test_organizer_association(self):
         com_name = uuid().hex
-        com = community.create(self.user.username,
+        com = community.create(self.user,
                                com_name,
-                               'It Tests Organizer Association With Username Creates.')
-        assert_true(isinstance(com, CommunityModel))
-        ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
-                                             .filter(CommunityAssociationModel.community_id == com.id)\
-                                             .all()
-        assert_equal(1, len(ass))
-        ass = ass[0]
-        assert_equal('organizer', ass.role)
-
-    def test_organizer_association_with_user_id(self):
-        com_name = uuid().hex
-        com = community.create(self.user.id,
-                               com_name,
-                               'It Tests Organizer Association With User ID Creates.')
-        assert_true(isinstance(com, CommunityModel))
-        ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
-                                             .filter(CommunityAssociationModel.community_id == com.id)\
-                                             .all()
-        assert_equal(1, len(ass))
-        ass = ass[0]
-        assert_equal('organizer', ass.role)
-
-    def test_organizer_association_with_user_email(self):
-        com_name = uuid().hex
-        com = community.create(self.user.email,
-                               com_name,
-                               'It Tests Organizer Association With User Email Creates.')
+                               'It Tests Organizer Association on Create.')
         assert_true(isinstance(com, CommunityModel))
         ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
                                              .filter(CommunityAssociationModel.community_id == com.id)\
@@ -311,7 +285,7 @@ class TestGetAssociations(PooldLibPostgresBaseTest):
             assert_true(ass.user_id in self.user_ids)
 
     def test_get_single_association(self):
-        ass = community.get_associations(self.community, community_user=self.user_one.id)
+        ass = community.get_associations(self.community, community_user=self.user_one)
         assert_equal(1, len(ass))
         ass = ass[0]
         assert_equal(ass.user_id, self.user_one.id)
@@ -343,7 +317,7 @@ class TestCommunityUpdateUserRole(PooldLibPostgresBaseTest):
                                                         user_id=self.user.id).first()
         assert_true(ass is not None)
         assert_equal('organizer', ass.role)
-        community.update_user_association(self.community.id, self.user.id, 'participant')
+        community.update_user_association(self.community.id, self.user, 'participant')
 
         ass = CommunityAssociationModel.query.filter_by(community_id=self.com_id,
                                                         user_id=self.user.id).first()
@@ -376,7 +350,7 @@ class TestCommunityDisassociateUser(PooldLibPostgresBaseTest):
                                                         user_id=self.user.id).first()
         assert_true(ass is not None)
 
-        community.disassociate_user(self.community.id, self.user.id)
+        community.disassociate_user(self.community.id, self.user)
 
         ass = CommunityAssociationModel.query.filter_by(community_id=self.com_id,
                                                         user_id=self.user.id).first()

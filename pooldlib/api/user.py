@@ -12,7 +12,6 @@ from sqlalchemy.orm.attributes import manager_of_class
 
 from pooldlib.generators import alphanumeric_string
 from pooldlib.exceptions import (InvalidPasswordError,
-                                 UnknownUserError,
                                  EmailUnavailableError,
                                  UsernameUnavailableError)
 from pooldlib.sqlalchemy import transaction_session
@@ -26,59 +25,50 @@ USER_TABLE = manager_of_class(UserModel).mapper.mapped_table
 numericRE = re.compile('\d')
 
 
-def get(user_id):
-    """Return a user from the database based on either their
-    username or associated email address. If no user is found
-    ``NoneType`` is returned.
-
-    :param user_id: Identifier for the user, either their associated
-                    username, email address or id.
-    :type user_id: :class:`pooldlib.postgresql.models.User`, string or long
-
-    :returns: :class:`pooldlib.postgresql.models.User` or ``NoneType``
-    """
-    if isinstance(user_id, UserModel):
-        if not user_id.enabled:
-            return None
-        return user_id
-
-    user = get_by_id(user_id)
-
-    if not user:
-        user = get_by_username(user_id)
-
-    if not user:
-        user = get_by_email(user_id)
-
-    return user
-
-
 def get_by_id(user_id):
-    user = None
-    if isinstance(user_id, (int, long)):
-        query = UserModel.query.filter_by(id=user_id)
-        query = query.filter_by(enabled=True)
-        user = query.first()
-    return user
+    """Return a user from the database based on their long integer id.
+    If no user is found `None` is returned.
+
+    :param email: long integer ID of the target user.
+    :type email: long
+
+    :returns: :class:`pooldlib.postgresql.models.User` or `None`
+    """
+    query = UserModel.query.filter_by(id=user_id)
+    query = query.filter_by(enabled=True)
+    user = query.first()
+    return user or None
 
 
 def get_by_username(username):
-    user = None
-    if username and isinstance(username, basestring):
-        query = UserModel.query.filter_by(username=username, enabled=True)
-        user = query.first()
-    return user
+    """Return a user from the database based on their associated username.
+    If no user is found `None` is returned.
+
+    :param email: Username to use in performing user lookup.
+    :type email: string
+
+    :returns: :class:`pooldlib.postgresql.models.User` or `None`
+    """
+    query = UserModel.query.filter_by(username=username, enabled=True)
+    user = query.first()
+    return user or None
 
 
 def get_by_email(email):
-    user = None
-    if email and isinstance(email, basestring):
-        query = UserModel.query.filter_by(enabled=True)
-        query = query.join(UserMetaModel)
-        query = query.filter(UserMetaModel.key == 'email')
-        query = query.filter(UserMetaModel.value == email)
-        user = query.first()
-    return user
+    """Return a user from the database based on their associated email address.
+    If no user is found `None` is returned.
+
+    :param email: Email address used to perform user lookup.
+    :type email: string
+
+    :returns: :class:`pooldlib.postgresql.models.User` or `None`
+    """
+    query = UserModel.query.filter_by(enabled=True)
+    query = query.join(UserMetaModel)
+    query = query.filter(UserMetaModel.key == 'email')
+    query = query.filter(UserMetaModel.value == email)
+    user = query.first()
+    return user or None
 
 
 def get_balance(user, currency):
@@ -91,8 +81,6 @@ def get_balance(user, currency):
     :param currency: Limit results to those associated with ``currency``.
     :type currency: Either string or
                     :class:`pooldlib.postgresql.models.Currency`
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """
     raise NotImplementedError()
 
@@ -116,8 +104,7 @@ def associate_stripe_token(user, stripe_token, force=False):
                   record.
     :type force: boolean
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-             :class:`pooldlib.exceptions.PreviousStripeAssociationError`
+    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
     """
     raise NotImplementedError()
 
@@ -131,8 +118,6 @@ def connections(user, as_organizer=True):
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
                 (username, id, etc).
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-
     :returns: list
     """
     raise NotImplementedError()
@@ -145,8 +130,6 @@ def communities(user):
     :param user: User for which to return community connections.
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
                 (username, id, etc).
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """
     raise NotImplementedError()
 
@@ -164,8 +147,6 @@ def transactions(user, party=None, currency=None):
     :param currency: Limit results to those associated with ``currency``.
     :type currency: Either string or
                     :class:`pooldlib.postgresql.models.Currency`
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """
     raise NotImplementedError()
 
@@ -189,8 +170,6 @@ def transfers(user, xfer_to=None, xfer_from=None, currency=None):
     :param currency: Limit results to those associated with ``currency``.
     :type currency: Either string or
                     :class:`pooldlib.postgresql.models.Currency`
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """
     raise NotImplementedError()
 
@@ -200,20 +179,14 @@ def verify_password(user, password):
     a given User data model instance. Returns True if the password given
     matches that of ``user``.
 
-    :param user: User to use in password comparison.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :param user: User object to use in password comparison.
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param password: The password to verify against the stored
                      password for the user.
     :type password: string
 
     :returns: boolean
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
     """
-    user = get(user)
-    if not user:
-        raise UnknownUserError()
     return user.is_password(password)
 
 
@@ -292,8 +265,7 @@ def update(user, username=None, name=None, password=None, **kwargs):
     an empty string ('') as the value for the name kwarg.
 
     :param user: User for which to update ``User`` model data.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param username: New username to associate with `User` instance.
     :type username: string
     :param name: New name to associate with `User` data model instance.
@@ -303,13 +275,9 @@ def update(user, username=None, name=None, password=None, **kwargs):
     :type kwargs: kwarg dictionary
 
     :raises: :class:`pooldlib.exceptions.InvalidPasswordError`
-             :class:`pooldlib.exceptions.UnknownUserError`
 
     :returns: :class:`pooldlib.postgresql.models.User`
     """
-    user = get(user)
-    if not user:
-        raise UnknownUserError()
     if username:
         user.update_field('username', username)
     if name is not None:
@@ -375,20 +343,15 @@ def set_password(user, password):
 
 
     :param user: User for which to update password.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-                (username, id, etc).
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param password: The new password to associate with the user.
     :type password: string
 
     :raises: :class:`pooldlib.exceptions.InvalidPasswordError`
-             :class:`pooldlib.exceptions.UnknownUserError`
 
     :returns: :class:`pooldlib.postgresql.models.User`
     """
     validate_password(password, exception_on_invalid=True)
-    user = get(user)
-    if not user:
-        raise UnknownUserError()
 
     user.update_field('password', password)
     with transaction_session(auto_commit=True) as session:
@@ -407,10 +370,6 @@ def reset_password(user):
 
     :returns: The new password for the User data model instance as a ``string``
     """
-    user = get(user)
-    if not user:
-        raise UnknownUserError()
-
     newpass = alphanumeric_string(alpha_count=8, number_count=2)
     user.password = newpass
     with transaction_session(auto_commit=True) as session:
@@ -424,13 +383,8 @@ def disable(user):
     and any further updates to the user being allowed.
 
     :param user: User which to disable.
-    :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
+    :type user: :class:`pooldlib.postgresql.models.User`
     """
-    user = get(user)
-    if not user:
-        raise UnknownUserError()
     user.update_field('enabled', False)
     with transaction_session(auto_commit=True) as session:
         session.add(user)
@@ -488,8 +442,11 @@ def email_exists(email, user=None):
     Optionally, if ``user`` is defined, will return False if it is associated
     with given user.
 
-    :param username: The username to check for existence.
-    :type username: string
+    :param email: The email to check for existence.
+    :type email: string
+    :param user: If defined and email address is found, function will return
+                 `True` if the email address is associated with ``user``.
+    :type user: :class:`pooldlib.postgresql.models.User`
 
     :returns: `bool`
     """
@@ -500,6 +457,5 @@ def email_exists(email, user=None):
           """
     ret = db.session.execute(sql % email).first()
     if ret and user is not None:
-        user = get(user)
         return ret[0] != user.id
     return ret is not None

@@ -95,26 +95,21 @@ def create(organizer, name, description, start=None, end=None):
     """Create and return a new instance of
     :class:`pooldlib.postgresql.models.Community`.
 
-    :param origanizer: The user to be classified as the community's
-                       organizing member.
-    :type origanizer: :class:`pooldlib.postgresql.models.User`, string or long
+    :param origanizer: The user to be classified as the community's organizing
+                       member.
+    :type origanizer: :class:`pooldlib.postgresql.models.User`
     :param name: The name of the community
     :type name: string
     :param description: The description of the community
     :type description: string
-    :param start: Active start datetime for the community in UTC, defaults to `datetime.utcnow`
+    :param start: Active start datetime for the community in UTC, defaults
+                  to `datetime.utcnow`
     :type start: :class:`datetime.datetime`
     :param end: Active end datetime for the community in UTC, optional
     :type end: :class:`datetime.datetime` or `None`
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-
     :returns: :class:`pooldlib.postgresql.models.Community`
     """
-    organizer = user.get(organizer)
-    if not organizer:
-        raise UnknownUserError()
-
     community = CommunityModel()
     community.name = name
     community.description = description
@@ -184,13 +179,11 @@ def associate_user(community, community_user, role):
     :param community: The community with which to associate the user.
     :type community: long or :class:`pooldlib.postgresql.models.Community`
     :param community_user: The user for which to create the association.
-    :type community_user: long, string (username or email) or
-                          :class:`pooldlib.postgresql.models.User`
+    :type community_user: :class:`pooldlib.postgresql.models.User`
     :param role: The role to assign the user (either `organizer` or `participant`)
     :type role: string
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-             :class:`pooldlib.exceptions.UnknownCommunityError`
+    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
              :class:`pooldlib.exceptions.InvalidUserRoleError`
              :class:`pooldlib.exceptions.DuplicateCommunityUserAssociationError`
 
@@ -199,9 +192,6 @@ def associate_user(community, community_user, role):
     community = get(community)
     if community is None:
         raise UnknownCommunityError()
-    community_user = user.get(community_user)
-    if not community_user:
-        raise UnknownUserError()
     ca = CommunityAssociationModel()
     ca.enabled = True
     ca.community = community
@@ -228,8 +218,7 @@ def get_associations(community, community_user=None):
     :param community: The community for which to retrieve associations.
     :type community: long or :class:`pooldlib.postgresql.models.Community`
     :param community_user: The user for which to retrieve the association.
-    :type community_user: long, string (username or email) or
-                          :class:`pooldlib.postgresql.models.User`
+    :type community_user: :class:`pooldlib.postgresql.models.User`
 
     :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
 
@@ -238,7 +227,6 @@ def get_associations(community, community_user=None):
     community = get(community)
     if community is None:
         raise UnknownCommunityError()
-    community_user = user.get(community_user)
     q = CommunityAssociationModel.query.filter_by(enabled=True)\
                                        .filter(CommunityAssociationModel.community_id == community.id)
     if community_user is not None:
@@ -254,13 +242,11 @@ def update_user_association(community, community_user, role):
     :param community: The community to which the user is associated.
     :type community: long or :class:`pooldlib.postgresql.models.Community`
     :param community_user: The user for which to update a community association.
-    :type community_user: long, string (username or email) or
-                          :class:`pooldlib.postgresql.models.User`
+    :type community_user: :class:`pooldlib.postgresql.models.User`
     :param role: The role to assign the user (either `organizer` or `participant`)
     :type role: string
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-             :class:`pooldlib.exceptions.UnknownCommunityError`
+    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
              :class:`pooldlib.exceptions.InvalidUserRoleError`
              :class:`pooldlib.exceptions.UnknownCommunityAssociationError`
 
@@ -269,9 +255,6 @@ def update_user_association(community, community_user, role):
     community = get(community)
     if community is None:
         raise UnknownCommunityError()
-    community_user = user.get(community_user)
-    if not community_user:
-        raise UnknownUserError()
 
     ca = get_associations(community, community_user=community_user)
     if not ca:
@@ -293,11 +276,9 @@ def disassociate_user(community, community_user):
     :param community: The community to which the user is associated.
     :type community: long or :class:`pooldlib.postgresql.models.Community`
     :param community_user: The user for which to remove a community association.
-    :type community_user: long, string (username or email) or
-                          :class:`pooldlib.postgresql.models.User`
+    :type community_user: :class:`pooldlib.postgresql.models.User`
 
-    :raises: :class:`pooldlib.exceptions.UnknownUserError`
-             :class:`pooldlib.exceptions.UnknownCommunityError`
+    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
              :class:`pooldlib.exceptions.UnknownCommunityAssociationError`
 
     :return: :class:`pooldlib.postgresql.models.CommunityAssociation`
@@ -305,9 +286,6 @@ def disassociate_user(community, community_user):
     community = get(community)
     if community is None:
         raise UnknownCommunityError()
-    community_user = user.get(community_user)
-    if not community_user:
-        raise UnknownUserError()
 
     ca = get_associations(community, community_user=community_user)
     if not ca:
