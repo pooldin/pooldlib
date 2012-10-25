@@ -37,3 +37,19 @@ class ExternalLedger(common.LedgerModel):
                        db.ForeignKey('fee.id'),
                        nullable=True)
     fee = db.relationship('Fee', backref='external_ledger_entries', lazy='select')
+
+
+class CommunityGoalLedger(common.LedgerModel):
+    __tablename__ = 'community_goal_ledger'
+
+    community_id = db.Column(db.BigInteger(unsigned=True),
+                             db.ForeignKey('community.id'),
+                             nullable=False)
+    community_goal = db.relationship('CommunityGoal', backref='ledger', lazy='select')
+    community_goal_id = db.Column(db.BigInteger(unsigned=True),
+                                  db.ForeignKey('community_goal.id'),
+                                  nullable=False)
+    party_id = db.Column(UUID)
+    party_type = db.Column(db.Enum('user', 'community', name='community_goal_ledger_target_type_enum'),
+                           nullable=False,
+                           index=True)

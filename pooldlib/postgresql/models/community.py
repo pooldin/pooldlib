@@ -24,6 +24,32 @@ class CommunityAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMixin,
     __table_args__ = (db.UniqueConstraint(user_id, community_id), {})
 
 
+class CommunityGoalAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMixin, common.EnabledMixin, common.FieldUpdateMixin):
+    __tablename__ = 'community_goal_association'
+
+    user = db.relationship('User', backref='goals', lazy='select')
+    user_id = db.Column(db.BigInteger(unsigned=True),
+                        db.ForeignKey('user.id'),
+                        nullable=False,
+                        primary_key=True)
+    community_id = db.Column(db.BigInteger(unsigned=True),
+                             db.ForeignKey('community.id'),
+                             nullable=False,
+                             primary_key=True)
+    community_goal = db.relationship('CommunityGoal', backref='participants', lazy='select')
+    community_goal_id = db.Column(db.BigInteger(unsigned=True),
+                                  db.ForeignKey('community_goal.id'),
+                                  nullable=False,
+                                  primary_key=True)
+    role = db.Column(db.Enum('opted-in',
+                             'opted-out',
+                             'participating',
+                             'nonparticipating',
+                             name='participation_enum'))
+
+    __table_args__ = (db.UniqueConstraint(user_id, community_id, community_goal_id), {})
+
+
 class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
     email = db.Column(db.String(255),
                       nullable=False,
