@@ -32,6 +32,7 @@ class BalanceMixin(object):
             balance.enabled = True
             balance.amount = Decimal('0.0000')
             balance.currency = currency
+            balance.type = self.__class__.__name__.lower()
             db.session.add(balance)
             self.balances.append(balance)
             db.session.flush()
