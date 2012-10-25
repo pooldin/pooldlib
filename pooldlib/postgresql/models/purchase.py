@@ -29,4 +29,4 @@ class Purchase(common.NameMixin, common.DescriptionMixin, common.Model):
     state = db.Column(db.String(4))
     zip = db.Column(db.String(32))
     country = db.Column(db.String(255))
-    email = db.Column(db.String(255), index=True)
+    email = db.Column(db.String(255), index=True, nullable=False)

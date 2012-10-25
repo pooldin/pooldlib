@@ -21,7 +21,7 @@ class User(common.Model,
            common.MetadataMixin):
 
     username = db.Column(db.String(40), unique=True, nullable=False)
-    _password = db.Column('password', db.String(255), nullable=False)
+    _password = db.Column('password', db.String(64), nullable=False)
     purchases = db.relationship('Purchase', secondary=UserPurchase, backref='purchasing_user')
 
     @property

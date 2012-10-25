@@ -6,17 +6,19 @@ class Community(common.ConfigurationModel, common.ActiveMixin, common.BalanceMix
     pass
 
 
-class CommunityAssociation(common.Model, common.EnabledMixin):
+class CommunityAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMixin, common.EnabledMixin, common.FieldUpdateMixin):
     __tablename__ = 'community_association'
 
     user = db.relationship('User', backref='communities', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
-                        nullable=False)
+                        nullable=False,
+                        primary_key=True)
     community = db.relationship('Community', backref='participants', lazy='select')
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
-                             nullable=False)
+                             nullable=False,
+                             primary_key=True)
     role = db.Column(db.Enum('organizer', 'participant', name='community_role_enum'))
 
     __table_args__ = (db.UniqueConstraint(user_id, community_id), {})
@@ -46,7 +48,7 @@ class CommunityGoal(common.ConfigurationModel, common.ActiveMixin, common.Metada
     community_id = db.Column(db.BigInteger(unsigned=True),
                              db.ForeignKey('community.id'),
                              nullable=False)
-    type = db.Column(db.Enum('fund-raiser', 'project', 'group-purchase', name='community_goal_type_enum'))
+    type = db.Column(db.Enum('petition', 'project', 'purchase', name='community_goal_type_enum'))
     purchase = db.relationship('Purchase',
                                backref='community_goal',
                                uselist=False,
