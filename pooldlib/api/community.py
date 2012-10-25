@@ -396,7 +396,7 @@ def goal(goal_id, community=None, filter_inactive=False):
     return goal or None
 
 
-def add_goal(community, name, description, start=None, end=None, **kwargs):
+def add_goal(community, name, description, type, start=None, end=None, **kwargs):
     """Add a goal to an existing community. ``name`` and ``description``
     are required.  Any key-value pair will be assumed to be metadata to be
     added to the goal instance.
@@ -406,7 +406,9 @@ def add_goal(community, name, description, start=None, end=None, **kwargs):
     :param name: The name of the newly created community goal.
     :type name: string
     :param description: The description of the newly created community goal.
-    :type name: string
+    :type description: string
+    :param type: The type of goal to add (fund-raiser, project or group-purchase)
+    :type type: string
     :param start: Active start datetime for the community in UTC, defaults to `datetime.utcnow`
     :type start: :class:`datetime.datetime`
     :param end: Active end datetime for the community in UTC, optional
@@ -428,6 +430,7 @@ def add_goal(community, name, description, start=None, end=None, **kwargs):
     goal.description = description
     goal.start = start or pytz.UTC.localize(datetime.utcnow())
     goal.end = end
+    goal.type = type
     community.goals.append(goal)
 
     with transaction_session() as session:
