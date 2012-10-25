@@ -153,7 +153,7 @@ class Email(object):
         :param recipient: Recipient to add to the recipient list.
         :type recipient: list of strings or :class:`pooldlib.postgres.models.User`
         """
-        if not isinstance(recipient, str):
+        if not isinstance(recipient, basestring):
             user = recipient
             recipient = '%s ' % user.name if user.name is not None else ''
             recipient += '<%s>' % user.email
@@ -171,7 +171,7 @@ class Email(object):
         :type recipient: list of strings or :class:`pooldlib.postgres.models.User`
         """
         for recipient in recipients:
-            if isinstance(recipient, str):
+            if isinstance(recipient, basestring):
                 self._recipients.append(recipient)
             elif isinstance(recipient, UserModel):
                 self.add_recipient(recipient)
