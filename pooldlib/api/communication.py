@@ -226,7 +226,7 @@ class Email(object):
         :param content: The content of the email.
         :type content: string
         """
-        self.msg_root = MIMEText(content)
+        self.msg_root = MIMEText(content.encode('utf8'), _subtype='plain', _charset='utf-8')
 
 
 class HTMLEmail(Email):

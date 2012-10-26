@@ -177,6 +177,29 @@ class TestAddEmailRecipients(PooldLibPostgresBaseTest):
         assert_equal([address_one, address_two], self.email.recipients)
 
 
+class TestSetPlainTextContent(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher.start()
+        self.email = email.Email(None, None)
+        self.addCleanup(self.SMTP_patcher.stop)
+
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.user_email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.user_email)
+
+        self.email.add_recipient(self.user)
+
+    @patch('pooldlib.api.communication.MIMEText', autospec=True)
+    def test_simple_set(self, mock_MIMEText):
+        body = 'Test body content.'
+        self.email.set_content(body)
+        assert_equal(1, mock_MIMEText.call_count)
+        mock_MIMEText.assert_any_call(body, _subtype='plain', _charset='utf-8')
+
+
 class TestSetHTMLContent(PooldLibPostgresBaseTest):
 
     def setUp(self):
