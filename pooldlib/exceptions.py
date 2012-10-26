@@ -35,6 +35,7 @@ class NoEmailRecipientsError(CommunicationAPIError):
     being set.
     """
 
+
 class NoContentEmailError(CommunicationAPIError):
     """Raised if an attempt is made to send an email prior to it's content
     being set.
@@ -146,12 +147,12 @@ class InsufficentFundsTransactionError(TransactAPIError):
 
 ##################################
 ### Internal Exceptions
-class YourFiredBitch(Exception):
-    """That's right.
+class InternalError(Exception):
+    """Base class for internal errors.
     """
 
 
-class GoWorkForBallmerError(YourFiredBitch):
+class GoWorkForBallmerError(InternalError):
     """Raised when you don't follow web standards.
     """
 ##################################
