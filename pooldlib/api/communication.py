@@ -36,7 +36,7 @@ class Email(object):
     If for some reason you forget/neglect to, it will be called **when GC cleans up after you**.
     """
 
-    def __init__(self, host, port, use_ssl=True, disclose_recipients=False, sender=None, local_hostname=None):
+    def __init__(self, host, port, use_ssl=True, disclose_recipients=True, hidden_recipients_address=None, sender=None, local_hostname=None):
         """Initialize an instance of ``pooldlib.api.communication.Email.
 
         :param host: Addressable name of SMTP server to send email through.
@@ -48,8 +48,11 @@ class Email(object):
         :type use_ssl: boolean
         :param disclose_recipients: If true, make recipients visible to all
                                     recipients via 'To' header.
-                                    Default: False
+                                    Default: True
         :type disclose_recipients: boolean
+        :param hidden_recipients_address: Email address to use in 'To' header when
+                                          hiding recipients. Defaults to sender address.
+        :type disclose_recipients: string
         :param sender: Email address string to use as sender of generated email(s).
                        Should be of the form 'Sender Name <sender_email@example.com>'
         :type sender: string
@@ -62,6 +65,7 @@ class Email(object):
         self.sender = sender
         self.subject = None
         self.disclose_recipients = disclose_recipients
+        self._recipient_address = hidden_recipients_address
         self._recipients = list()
         self.msg_root = None
         self._host = host
@@ -212,7 +216,7 @@ class Email(object):
             to_string = ', '.join(self.recipients)
             self.msg_root['To'] = to_string
         else:
-            self.msg_root['To'] = self.sender
+            self.msg_root['To'] = self._recipient_address or self.sender
 
         self.server.sendmail(self.sender, self.recipients, self.msg_root.as_string())
 
@@ -236,9 +240,12 @@ class HTMLEmail(Email):
         - (optional) set sender: ``Email.sender = 'sender name <sender_email@example.com>'``
         - connect to SMTP server: ``Email.connect()``
         - if login to SMTP server is required: ``Email.login('username', 'password')``
+
+    Preferably, after your email(s) have been sent you should call ``Email.disconnect()``.
+    If for some reason you forget/neglect to, it will be called **when GC cleans up after you**.
     """
 
-    def __init__(self, host, port, sender=None, local_hostname=None):
+    def __init__(self, host, port, use_ssl=True, disclose_recipients=True, hidden_recipients_address=None, sender=None, local_hostname=None):
         """Initialize an instance of ``pooldlib.api.communication.Email.
 
         :param host: Addressable name of SMTP server to send email through.
@@ -250,15 +257,24 @@ class HTMLEmail(Email):
         :type use_ssl: boolean
         :param disclose_recipients: If true, make recipients visible to all
                                     recipients via 'To' header.
-                                    Default: False
+                                    Default: True
         :type disclose_recipients: boolean
+        :param hidden_recipients_address: Email address to use in 'To' header when
+                                          hiding recipients. Defaults to sender address.
+        :type disclose_recipients: string
         :param sender: Email address string to use as sender of generated email(s).
                        Should be of the form 'Sender Name <sender_email@example.com>'
         :type sender: string
         :param local_hostname: The FQDN of the host sending the email.  See smtplib.SMTP.
         :type local_hostname: string
         """
-        super(HTMLEmail, self).__init__(host, port, sender=sender, local_hostname=local_hostname)
+        super(HTMLEmail, self).__init__(host,
+                                        port,
+                                        use_ssl=True,
+                                        disclose_recipients=True,
+                                        hidden_recipients_address=None,
+                                        sender=None,
+                                        local_hostname=None)
         self.msg_root = MIMEMultipart('mixed')
         self.msg_root.preamble = 'This is a multi-part message in MIME format.'
 
