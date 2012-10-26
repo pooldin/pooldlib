@@ -1,2 +1,2 @@
-from .uuid import UUID
+from .eweweid import UUID
 from .datetime import DateTimeTZ

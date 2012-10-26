@@ -41,11 +41,11 @@ class CommunityGoalAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMi
                                   db.ForeignKey('community_goal.id'),
                                   nullable=False,
                                   primary_key=True)
-    role = db.Column(db.Enum('opted-in',
-                             'opted-out',
-                             'participating',
-                             'nonparticipating',
-                             name='participation_enum'))
+    participation = db.Column(db.Enum('opted-in',
+                                      'opted-out',
+                                      'participating',
+                                      'nonparticipating',
+                                      name='participation_enum'))
 
     __table_args__ = (db.UniqueConstraint(user_id, community_id, community_goal_id), {})
 
