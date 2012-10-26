@@ -24,7 +24,10 @@ class BalanceMixin(object):
 
         if isinstance(currency, basestring):
             currency = CurrencyModel.get(currency)
-        balance = balance.get(for_update=for_update, user_id=self.id, currency_id=currency.id)
+        if self.__class__.__name__ == 'User':
+            balance = balance.get(for_update=for_update, user_id=self.id, currency_id=currency.id)
+        else:
+            balance = balance.get(for_update=for_update, community_id=self.id, currency_id=currency.id)
 
         # If we don't find a balance for the user, create if requested to
         if not balance and get_or_create:
@@ -33,6 +36,10 @@ class BalanceMixin(object):
             balance.amount = Decimal('0.0000')
             balance.currency = currency
             balance.type = self.__class__.__name__.lower()
+            if self.__class__.__name__ == 'User':
+                balance.user = self
+            else:
+                balance.community = self
             db.session.add(balance)
             self.balances.append(balance)
             db.session.flush()
