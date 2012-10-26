@@ -102,9 +102,21 @@ class InvalidUserRoleError(CommunityAPIError):
     """
 
 
-class DuplicateCommunityUserAssociationError(CommunityAPIError):
+class InvalidGoalParticipationNameError(CommunityAPIError):
     """Raised when an attempt is made to associate a user with a community
-    with an invalid role name.
+    goal using an invalid participation name.
+    """
+
+
+class DuplicateCommunityUserAssociationError(CommunityAPIError):
+    """Raised when an attempt is to create a duplicate user/community
+    association.
+    """
+
+
+class DuplicateCommunityGoalUserAssociationError(CommunityAPIError):
+    """Raised when an attempt is to create a duplicate user/community goal
+    association.
     """
 
 
