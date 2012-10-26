@@ -4,13 +4,14 @@ from uuid import uuid4 as uuid
 from nose.tools import raises, assert_equal, assert_true, assert_false
 
 from pooldlib.exceptions import (InvalidUserRoleError,
+                                 InvalidGoalParticipationNameError,
                                  UnknownCommunityError,
                                  DuplicateCommunityUserAssociationError,
-                                 UnknownCommunityGoalError)
+                                 DuplicateCommunityGoalUserAssociationError)
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (Community as CommunityModel,
                                  CommunityGoal as CommunityGoalModel,
-                                 CommunityGoalMeta as CommunityGoalMetaModel,
+                                 CommunityGoalAssociation as CommunityGoalAssociationModel,
                                  CommunityAssociation as CommunityAssociationModel)
 from pooldlib.api import community
 
@@ -152,19 +153,6 @@ class TestCreateCommunity(PooldLibPostgresBaseTest):
         ass = ass[0]
         assert_equal('organizer', ass.role)
 
-    def test_organizer_association(self):
-        com_name = uuid().hex
-        com = community.create(self.user,
-                               com_name,
-                               'It Tests Organizer Association on Create.')
-        assert_true(isinstance(com, CommunityModel))
-        ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
-                                             .filter(CommunityAssociationModel.community_id == com.id)\
-                                             .all()
-        assert_equal(1, len(ass))
-        ass = ass[0]
-        assert_equal('organizer', ass.role)
-
 
 class TestCommunityAssociateUser(PooldLibPostgresBaseTest):
 
@@ -186,7 +174,7 @@ class TestCommunityAssociateUser(PooldLibPostgresBaseTest):
         self.user = self.create_user(self.username, self.name, self.email)
 
     def test_associate_organizer(self):
-        community.associate_user(self.community.id, self.user, 'organizer')
+        community.associate_user(self.community, self.user, 'organizer', 'participating')
 
         ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
                                              .filter(CommunityAssociationModel.community_id == self.community.id)\
@@ -196,7 +184,7 @@ class TestCommunityAssociateUser(PooldLibPostgresBaseTest):
         assert_equal('organizer', ass.role)
 
     def test_associate_participant(self):
-        community.associate_user(self.community.id, self.user, 'participant')
+        community.associate_user(self.community, self.user, 'participant', 'participating')
 
         ass = CommunityAssociationModel.query.filter(CommunityAssociationModel.user_id == self.user.id)\
                                              .filter(CommunityAssociationModel.community_id == self.community.id)\
@@ -207,12 +195,12 @@ class TestCommunityAssociateUser(PooldLibPostgresBaseTest):
 
     @raises(InvalidUserRoleError)
     def test_associate_unknown_role(self):
-        community.associate_user(self.community.id, self.user, 'MinistryOfSillyWalks')
+        community.associate_user(self.community, self.user, 'MinisterOfSillyWalks', 'walker')
 
     @raises(DuplicateCommunityUserAssociationError)
     def test_create_duplicate_association(self):
-        community.associate_user(self.community.id, self.user, 'organizer')
-        community.associate_user(self.community.id, self.user, 'organizer')
+        community.associate_user(self.community, self.user, 'organizer', 'participating')
+        community.associate_user(self.community, self.user, 'organizer', 'participating')
 
 
 class TestDisableCommunity(PooldLibPostgresBaseTest):
@@ -235,13 +223,9 @@ class TestDisableCommunity(PooldLibPostgresBaseTest):
         assert_false(ret.enabled)
 
     def test_simple_disable_with_id(self):
-        community.disable(self.com_id)
+        community.disable(self.community)
         ret = CommunityModel.query.get(self.com_id)
         assert_false(ret.enabled)
-
-    @raises(UnknownCommunityError)
-    def test_disable_with_invalid_community(self):
-        community.disable(self.com_id + 1)
 
 
 class TestGetAssociations(PooldLibPostgresBaseTest):
@@ -285,7 +269,7 @@ class TestGetAssociations(PooldLibPostgresBaseTest):
             assert_true(ass.user_id in self.user_ids)
 
     def test_get_single_association(self):
-        ass = community.get_associations(self.community, community_user=self.user_one)
+        ass = community.get_associations(self.community, user=self.user_one)
         assert_equal(1, len(ass))
         ass = ass[0]
         assert_equal(ass.user_id, self.user_one.id)
@@ -317,7 +301,7 @@ class TestCommunityUpdateUserRole(PooldLibPostgresBaseTest):
                                                         user_id=self.user.id).first()
         assert_true(ass is not None)
         assert_equal('organizer', ass.role)
-        community.update_user_association(self.community.id, self.user, 'participant')
+        community.update_user_association(self.community, self.user, 'participant')
 
         ass = CommunityAssociationModel.query.filter_by(community_id=self.com_id,
                                                         user_id=self.user.id).first()
@@ -350,7 +334,7 @@ class TestCommunityDisassociateUser(PooldLibPostgresBaseTest):
                                                         user_id=self.user.id).first()
         assert_true(ass is not None)
 
-        community.disassociate_user(self.community.id, self.user)
+        community.disassociate_user(self.community, self.user)
 
         ass = CommunityAssociationModel.query.filter_by(community_id=self.com_id,
                                                         user_id=self.user.id).first()
@@ -460,27 +444,27 @@ class TestGetCommunityGoals(PooldLibPostgresBaseTest):
         self.goal_ids = (self.goal_one.id, self.goal_two.id, self.goal_three.id)
 
     def test_simple_get_goals(self):
-        goals = community.goals(self.com_id, filter_inactive=False)
+        goals = community.goals(self.community, filter_inactive=False)
         assert_equal(3, len(goals))
         for goal in goals:
             assert_true(goal.id in self.goal_ids)
 
     def test_get_filter_inactive(self):
-        goal = community.goals(self.com_id, filter_inactive=True)
+        goal = community.goals(self.community, filter_inactive=True)
         assert_equal(1, len(goal))
         goal = goal[0]
         assert_equal(self.goal_two.id, goal.id)
 
     def test_simple_get_specific_goals(self):
         goal_ids = (self.goal_one.id, self.goal_two.id)
-        goals = community.goals(self.com_id, goal_ids=goal_ids, filter_inactive=False)
+        goals = community.goals(self.community, goal_ids=goal_ids, filter_inactive=False)
         assert_equal(2, len(goals))
         for goal in goals:
             assert_true(goal.id in goal_ids)
 
     def test_get_filter_inactive_specific_goals(self):
         goal_ids = (self.goal_one.id, self.goal_two.id)
-        goal = community.goals(self.com_id, goal_ids=goal_ids, filter_inactive=True)
+        goal = community.goals(self.community, goal_ids=goal_ids, filter_inactive=True)
         assert_equal(1, len(goal))
         goal = goal[0]
         assert_equal(self.goal_two.id, goal.id)
@@ -501,7 +485,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         self.com_id = self.community.id
 
     def test_simple_add(self):
-        community.add_goal(self.com_id,
+        community.add_goal(self.community,
                            'Test Simple Add',
                            'To Test Simple Add',
                            'project')
@@ -517,7 +501,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
     def test_add_start_end_specified(self):
         start = datetime.utcnow()
         end = start + timedelta(days=30)
-        community.add_goal(self.com_id,
+        community.add_goal(self.community,
                            'Test Add Start End Specified',
                            'To Test Add Start End Specified',
                            'project',
@@ -533,7 +517,7 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         assert_equal(pytz.UTC.localize(end), goal.end)
 
     def test_add_with_metadata(self):
-        community.add_goal(self.com_id,
+        community.add_goal(self.community,
                            'Test Add With Metadata',
                            'To Test Add With Metadata',
                            'project',
@@ -549,6 +533,148 @@ class TestAddCommunityGoal(PooldLibPostgresBaseTest):
         assert_true(goal.end is None)
         assert_equal(goal.mdata_key_one, u'mdata value one')
         assert_equal(goal.mdata_key_two, u'mdata value two')
+
+
+class TestCommunityGoalUserAssociation(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestCommunityGoalUserAssociation, self).setUp()
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+
+        self.com_name = 'Test Community Goal Association'
+        self.com_description = 'To Test Community Goal Association'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.community = self.create_community(self.com_name,
+                                               self.com_description,
+                                               self.com_start,
+                                               self.com_end)
+        self.com_id = self.community.id
+
+        now = datetime.utcnow()
+        self.goal_one = self.create_community_goal(self.community.id,
+                                                   'Goal One',
+                                                   'Its Goal One',
+                                                   'project',
+                                                   start=now - timedelta(days=3),
+                                                   end=now - timedelta(days=2))
+        self.goal_two = self.create_community_goal(self.community.id,
+                                                   'Goal Two',
+                                                   'Its Goal Two',
+                                                   'project',
+                                                   start=now - timedelta(days=1),
+                                                   end=now + timedelta(days=1))
+        self.goal_three = self.create_community_goal(self.community.id,
+                                                     'Goal Three',
+                                                     'Its Goal Three',
+                                                     'project',
+                                                     start=now + timedelta(days=1),
+                                                     end=now + timedelta(days=2))
+
+    def test_simple_association(self):
+        community.associate_user_with_goal(self.goal_one, self.user, 'participating')
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_one)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('participating', cga.participation)
+        assert_equal(self.goal_one.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+    def test_multiple_associations(self):
+        community.associate_user_with_goal(self.goal_one, self.user, 'participating')
+        community.associate_user_with_goal(self.goal_two, self.user, 'participating')
+        community.associate_user_with_goal(self.goal_three, self.user, 'participating')
+
+        # Goal One
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_one)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('participating', cga.participation)
+        assert_equal(self.goal_one.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+        # Goal Two
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_two)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('participating', cga.participation)
+        assert_equal(self.goal_two.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+        # Goal Three
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_three)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('participating', cga.participation)
+        assert_equal(self.goal_three.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+    def test_associations_by_goal_assosiation(self):
+        community.associate_user(self.community, self.user, 'participant', 'opted-in')
+
+        # Goal One: Inactive
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_one)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('opted-in', cga.participation)
+        assert_equal(self.goal_one.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+        # Goal Two: Active
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_two)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('opted-in', cga.participation)
+        assert_equal(self.goal_two.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+        # Goal Three: Inactive
+        cga = CommunityGoalAssociationModel.query.filter_by(user=self.user)\
+                                                 .filter_by(community_id=self.community.id)\
+                                                 .filter_by(community_goal=self.goal_three)\
+                                                 .first()
+        cga = cga or None
+        assert_true(cga is not None)
+        assert_equal('opted-in', cga.participation)
+        assert_equal(self.goal_three.id, cga.community_goal.id)
+        assert_equal(self.community.id, cga.community_id)
+        assert_equal(self.user.id, cga.user.id)
+
+    @raises(InvalidGoalParticipationNameError)
+    def test_invalid_association(self):
+        community.associate_user_with_goal(self.goal_one, self.user, 'wedontneednostinkingoals')
+
+    @raises(DuplicateCommunityGoalUserAssociationError)
+    def test_duplicate_association(self):
+        community.associate_user_with_goal(self.goal_one, self.user, 'opted-in')
+        community.associate_user_with_goal(self.goal_one, self.user, 'opted-in')
 
 
 class TestUpdateCommunityGoal(PooldLibPostgresBaseTest):
@@ -586,7 +712,7 @@ class TestUpdateCommunityGoal(PooldLibPostgresBaseTest):
         assert_equal(old_name, goal.name)
         assert_equal(old_description, goal.description)
 
-        community.update_goal(self.goal.id, name='Updated Goal', description='Its Updated Goal')
+        community.update_goal(self.goal, name='Updated Goal', description='Its Updated Goal')
         goal = CommunityGoalModel.query.filter_by(community_id=self.com_id).all()
         assert_equal(1, len(goal))
         goal = goal[0]
@@ -613,7 +739,7 @@ class TestUpdateCommunityGoal(PooldLibPostgresBaseTest):
         assert_equal(old_meta_value_one, goal.meta_key_one)
         assert_true(not hasattr(goal, 'meta_key_two'))
 
-        community.update_goal(self.goal.id,
+        community.update_goal(self.goal,
                               meta_key_one='meta value one updated',
                               meta_key_two='meta value two created')
 
@@ -646,7 +772,7 @@ class TestUpdateCommunityGoal(PooldLibPostgresBaseTest):
         assert_true(hasattr(goal, 'meta_key_one'))
         assert_equal(old_meta_value_one, goal.meta_key_one)
 
-        community.update_goal(self.goal.id,
+        community.update_goal(self.goal,
                               meta_key_one=None)
 
         goal = CommunityGoalModel.query.filter_by(community_id=self.com_id).all()
@@ -682,11 +808,11 @@ class TestDisableCommunityGoal(PooldLibPostgresBaseTest):
                                                start=self.start)
 
     def test_simple_disable(self):
-        community.disable_goal(self.goal.id)
+        community.disable_goal(self.goal)
         community_goal = CommunityGoalModel.query.get(self.goal.id)
         assert_false(community_goal.enabled)
 
     def test_simple_disable_then_get(self):
-        community.disable_goal(self.goal.id)
+        community.disable_goal(self.goal)
         community_goal = community.goal(self.goal.id)
         assert_true(community_goal is None)

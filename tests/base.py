@@ -101,7 +101,9 @@ class PooldLibBaseTest(unittest.TestCase):
             self.commit_model(cgm)
         return cg
 
-    def create_balance(self, user=None, community=None, currency_code=None, amount=Decimal('50.0000')):
+    def create_balance(self, user=None, community=None, currency_code=None, amount=None):
+        if not amount:
+            amount = Decimal('50.0000')
         if not currency_code:
             currency_code = 'USD'
 
@@ -115,7 +117,7 @@ class PooldLibBaseTest(unittest.TestCase):
             b.user = user
             b.type = 'user'
         elif community is not None:
-            b.community = user
+            b.community = community
             b.type = 'community'
 
         self.commit_model(b)
