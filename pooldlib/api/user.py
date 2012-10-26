@@ -66,7 +66,7 @@ def get_by_email(email):
     query = UserModel.query.filter_by(enabled=True)
     query = query.join(UserMetaModel)
     query = query.filter(UserMetaModel.key == 'email')
-    query = query.filter(UserMetaModel.value == email)
+    query = query.filter(UserMetaModel.value == email.lower())
     user = query.first()
     return user or None
 
@@ -213,6 +213,8 @@ def create(username, password, name=None, **kwargs):
             msg = 'The email address %s is already assigned to another user.'
             msg %= kwargs['email']
             raise EmailUnavailableError(msg)
+        # Only store lower-case emails in the system
+        kwargs['email'] = kwargs['email'].lower()
 
     u = UserModel()
     u.username = username
@@ -227,12 +229,6 @@ def create(username, password, name=None, **kwargs):
         except SQLAlchemyIntegrityError:
             msg = "Username %s already in use." % username
             raise UsernameUnavailableError(msg)
-
-    if 'email' in kwargs:
-        if email_exists(kwargs['email']):
-            msg = 'The email address %s is already assigned to another user.'
-            msg %= kwargs['email']
-            raise EmailUnavailableError(msg)
 
     meta = list()
     for (k, v) in kwargs.items():
@@ -287,6 +283,7 @@ def update(user, username=None, name=None, password=None, **kwargs):
             msg = 'The email address %s is already assigned to another user.'
             msg %= kwargs['email']
             raise EmailUnavailableError(msg)
+        kwargs['email'] = kwargs['email'].lower()
 
     update_meta = [m for m in user.metadata if m.key in kwargs]
     create_meta = [(k, v) for (k, v) in kwargs.items() if not hasattr(user, k)]
@@ -449,7 +446,7 @@ def email_exists(email, user=None):
              WHERE key = 'email'
                 AND value = '%s';
           """
-    ret = db.session.execute(sql % email).first()
+    ret = db.session.execute(sql % email.lower()).first()
     if ret and user is not None:
         return ret[0] != user.id
     return ret is not None

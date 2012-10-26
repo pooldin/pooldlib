@@ -3,7 +3,6 @@ from uuid import uuid4 as uuid
 from nose.tools import raises, assert_equal, assert_true, assert_false
 
 from pooldlib.exceptions import (InvalidPasswordError,
-                                 UnknownUserError,
                                  UsernameUnavailableError,
                                  EmailUnavailableError)
 from pooldlib.api import user
@@ -19,7 +18,7 @@ class TestGetUser(PooldLibPostgresBaseTest):
     def setUp(self):
         super(TestGetUser, self).setUp()
 
-        self.username_a = uuid().hex
+        self.username_a = uuid().hex.lower()
         self.name_a = '%s %s' % (self.username_a[:16], self.username_a[16:])
         self.email_a = '%s@example.com' % self.username_a
         self.user_a = self.create_user(self.username_a, self.name_a, self.email_a)
@@ -41,6 +40,12 @@ class TestGetUser(PooldLibPostgresBaseTest):
 
     def test_get_with_email(self):
         u = user.get_by_email(self.email_a)
+        assert_equal(self.username_a, u.username)
+        assert_equal(self.name_a, u.name)
+        assert_equal(self.email_a, u.email)
+
+    def test_get_with_email_case_difference(self):
+        u = user.get_by_email(self.email_a.upper())
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
