@@ -15,14 +15,14 @@ from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import (Community as CommunityModel,
                                  CommunityGoal as CommunityGoalModel,
                                  CommunityGoalMeta as CommunityGoalMetaModel,
-                                 CommunityAssociation as CommunityAssociationModel)
-from pooldlib.api import user
-from pooldlib.exceptions import (UnknownUserError,
-                                 UnknownCommunityError,
-                                 UnknownCommunityGoalError,
-                                 InvalidUserRoleError,
+                                 CommunityAssociation as CommunityAssociationModel,
+                                 CommunityGoalAssociation as CommunityGoalAssociationModel)
+from pooldlib.api import balance as _balance
+from pooldlib.exceptions import (InvalidUserRoleError,
+                                 InvalidGoalParticipationNameError,
                                  UnknownCommunityAssociationError,
-                                 DuplicateCommunityUserAssociationError)
+                                 DuplicateCommunityUserAssociationError,
+                                 DuplicateCommunityGoalUserAssociationError)
 
 
 # TODO :: Enable pagination
@@ -65,8 +65,6 @@ def get(community_id, filter_inactive=False):
                             that is if the current datetime is not outside of
                             the community's start and end times. Default `False`.
     :type filter_inactive: boolean
-
-    :raises: ArgumentError
 
     :returns: :class:`pooldlib.postgresql.models.User` or ``NoneType``
     """
@@ -120,28 +118,22 @@ def create(organizer, name, description, start=None, end=None):
         session.add(community)
         session.commit()
 
-    associate_user(community, organizer, 'organizer')
+    associate_user(community, organizer, 'organizer', 'participating')
     return community
 
 
 def update(community, name=None, description=None):
     """Update name and description of a specified community.
 
-    :param community: Community or community identifier (id).
-    :type community: :class:`pooldlib.postgresql.models.Community` or long
+    :param community: Community to update.
+    :type community: :class:`pooldlib.postgresql.models.Community`
     :param name: If specified, the new name for the community.
     :type name: string
     :param name: If specified, the new description for the community.
     :type name: string
 
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-
     :returns: :class:`pooldlib.postgresql.models.Community`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
-
     if name is not None:
         community.name = name
     if description is not None:
@@ -159,44 +151,84 @@ def disable(community):
     :func:`pooldlib.api.community.communities`
 
     :param community: The community to disable.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
-
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
+    :type community: :class:`pooldlib.postgresql.models.Community`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
-
     community.enabled = False
     with transaction_session() as session:
         session.add(community)
         session.commit()
 
 
-def associate_user(community, community_user, role):
+def balances(community):
+    """Retrieve all balances for a community.
+
+    :param community: Community for which to retrieve balances.
+    :type community: :class:`pooldlib.postgresql.models.Community`
+
+    :returns: list of :class:`pooldlib.postgresql.models.Balance` objects
+    """
+    return community.balances
+
+
+def balance(community, currency, get_or_create=False, for_update=False):
+    """Return a communities balance for ``currency``, if ``get_or_create=True``, if
+    an existing balance isn't found, one will be created and returned.
+
+    :param community: Community for which to retrieve balance.
+    :type community: :class:`pooldlib.postgresql.models.Community`
+    :param currency: Currenty type of the balance to retrieve
+    :type currency::class: `pooldlib.postgresql.models.Currency`
+    :param get_or_create: If `True` and an existing balance is not found
+                          one will be created for ``currency``.
+    :type get_or_create: boolean
+    :param for_update: If `True`, the ``SELECT FOR UPDATE`` directive will be
+                       used when retrieving the target balance.
+    :type for_update: boolean
+
+    :returns: :class:`pooldlib.postgresql.models.Balance`
+    """
+    b = _balance.get(for_update=for_update,
+                     currency_id=currency.id,
+                     type='community',
+                     community_id=community.id)
+    if not b and get_or_create:
+        b = _balance.create_for_community(community, currency)
+
+    if isinstance(b, (tuple, list)):
+        b = b[0]
+    return b or None
+
+
+def associate_user(community, user, role, goal_participation):
     """Associate a user with a community filling a specified role.
 
     :param community: The community with which to associate the user.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
-    :param community_user: The user for which to create the association.
-    :type community_user: :class:`pooldlib.postgresql.models.User`
+    :type community: :class:`pooldlib.postgresql.models.Community`
+    :param user: The user for which to create the association.
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param role: The role to assign the user (either `organizer` or `participant`)
     :type role: string
+    :param goal_participation: The participation description for the communities goals.
+                               One of `participating`, `nonparticipating`, `opted-in` or `opted-out`
+                               (See :func:`pooldlib.api.community.associate_user_with_goal`)
+    :type goal_participation: string
 
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-             :class:`pooldlib.exceptions.InvalidUserRoleError`
+    :raises: :class:`pooldlib.exceptions.InvalidUserRoleError`
              :class:`pooldlib.exceptions.DuplicateCommunityUserAssociationError`
 
     :return: :class:`pooldlib.postgresql.models.CommunityAssociation`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
+    # NOTE :: We intentionally associate the user with all existing goals, not just
+    # NOTE :: active ones. Date stamps can distinguish users who joined prior to goal
+    # NOTE :: becoming inactive.
+    community_goals = goals(community, filter_inactive=False)
     ca = CommunityAssociationModel()
     ca.enabled = True
     ca.community = community
-    ca.user = community_user
+    ca.user = user
     ca.role = role
+    for goal in community_goals:
+        associate_user_with_goal(goal, user, goal_participation)
 
     with transaction_session() as session:
         session.add(ca)
@@ -209,54 +241,43 @@ def associate_user(community, community_user, role):
     return ca
 
 
-def get_associations(community, community_user=None):
+def get_associations(community, user=None):
     """Retrieve all :class:`pooldlib.postgresql.models.CommunityAssociation`
-    objects associated with the specified community. If ``community_user``
-    is not `None`, return only the association corresponding to that specific
-    user.
+    objects associated with the specified community. If ``user`` is not `None`,
+    return only the association corresponding to that specific user.
 
     :param community: The community for which to retrieve associations.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
-    :param community_user: The user for which to retrieve the association.
-    :type community_user: :class:`pooldlib.postgresql.models.User`
-
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
+    :type community: :class:`pooldlib.postgresql.models.Community`
+    :param user: The user for which to retrieve the association.
+    :type user: :class:`pooldlib.postgresql.models.User`
 
     :return: list of :class:`pooldlib.postgresql.models.CommunityAssociation`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
     q = CommunityAssociationModel.query.filter_by(enabled=True)\
                                        .filter(CommunityAssociationModel.community_id == community.id)
-    if community_user is not None:
-        q = q.filter(CommunityAssociationModel.user_id == community_user.id)
+    if user is not None:
+        q = q.filter(CommunityAssociationModel.user_id == user.id)
 
     return q.all()
 
 
-def update_user_association(community, community_user, role):
+def update_user_association(community, user, role):
     """Update an existing User/Community association to change the
     specified user's role in the community.
 
     :param community: The community to which the user is associated.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
-    :param community_user: The user for which to update a community association.
-    :type community_user: :class:`pooldlib.postgresql.models.User`
+    :type community: :class:`pooldlib.postgresql.models.Community`
+    :param user: The user for which to update a community association.
+    :type user: :class:`pooldlib.postgresql.models.User`
     :param role: The role to assign the user (either `organizer` or `participant`)
     :type role: string
 
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-             :class:`pooldlib.exceptions.InvalidUserRoleError`
+    :raises: :class:`pooldlib.exceptions.InvalidUserRoleError`
              :class:`pooldlib.exceptions.UnknownCommunityAssociationError`
 
     :return: :class:`pooldlib.postgresql.models.CommunityAssociation`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
-
-    ca = get_associations(community, community_user=community_user)
+    ca = get_associations(community, user=user)
     if not ca:
         msg = "User %s is not associated with community %s. Please create "\
               "one with community.associate_user()."
@@ -270,24 +291,19 @@ def update_user_association(community, community_user, role):
                 raise InvalidUserRoleError()
 
 
-def disassociate_user(community, community_user):
+def disassociate_user(community, user):
     """Remove the association between a User and a Community.
 
     :param community: The community to which the user is associated.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
-    :param community_user: The user for which to remove a community association.
-    :type community_user: :class:`pooldlib.postgresql.models.User`
+    :type community: :class:`pooldlib.postgresql.models.Community`
+    :param user: The user for which to remove a community association.
+    :type user: :class:`pooldlib.postgresql.models.User`
 
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-             :class:`pooldlib.exceptions.UnknownCommunityAssociationError`
+    :raises: :class:`pooldlib.exceptions.UnknownCommunityAssociationError`
 
     :return: :class:`pooldlib.postgresql.models.CommunityAssociation`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
-
-    ca = get_associations(community, community_user=community_user)
+    ca = get_associations(community, user=user)
     if not ca:
         msg = "User %s is not associated with community %s. Please create "\
               "one with community.associate_user()."
@@ -312,7 +328,7 @@ def goals(community, goal_ids=None, filter_inactive=True):
     those whose `start` and `endtime` make it currently active.
 
     :param community: The community for which to retrieve goals.
-    :type community_id: :class:`pooldlib.postgresql.models.Community`  or ``long``.
+    :type community_id: :class:`pooldlib.postgresql.models.Community`
     :param goal_ids: List of goal ids.
     :type goal_ids: list of longs.
     :param filter_inactive: Return goals only if they are currently active,
@@ -322,9 +338,6 @@ def goals(community, goal_ids=None, filter_inactive=True):
 
     :returns: list of :class:`pooldlib.postgresql.models.Communitiy`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
     if goal_ids and not isinstance(goal_ids, (list, tuple)):
         goal_ids = [goal_ids]
 
@@ -344,26 +357,19 @@ def goal(goal_id, community=None, filter_inactive=False):
     """Return a goal from the database based on it's long integer id.
     If no community is found ``NoneType`` is returned.
 
-    :param goal_id: Identifier for the target community.
-    :type goal_id: :class:`pooldlib.postgresql.models.Goal` or long
+    :param goal_id: Identifier for the target community goal.
+    :type goal_id: long
     :param community: The community goal to which the desired goal belongs.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
+    :type community: :class:`pooldlib.postgresql.models.Community`
     :param filter_inactive: If `True`, only return goal if it's start and
                             end times indicate that it is currently active.
     """
     if goal_id is None:
         return None
-    if isinstance(goal_id, CommunityGoalModel):
-        if not goal_id.enabled:
-            return None
-        return goal_id
 
     q = CommunityGoalModel.query.filter_by(id=goal_id)\
                                 .filter_by(enabled=True)
     if community is not None:
-        community = get(community)
-        if community is None:
-            raise UnknownCommunityError()
         q = q.filter_by(community=community)
 
     if filter_inactive:
@@ -380,7 +386,7 @@ def add_goal(community, name, description, type, start=None, end=None, **kwargs)
     added to the goal instance.
 
     :param community: The community goal which the add a new goal.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
+    :type community: :class:`pooldlib.postgresql.models.Community`
     :param name: The name of the newly created community goal.
     :type name: string
     :param description: The description of the newly created community goal.
@@ -395,14 +401,8 @@ def add_goal(community, name, description, type, start=None, end=None, **kwargs)
                    newly created goal as metadata.
     :type kwargs: unspecified keyword arguments to the function.
 
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-
     :returns: :class:`pooldlib.postgresql.models.CommunitiyGoal`
     """
-    community = get(community)
-    if community is None:
-        raise UnknownCommunityError()
-
     goal = CommunityGoalModel()
     goal.name = name
     goal.description = description
@@ -429,31 +429,22 @@ def add_goal(community, name, description, type, start=None, end=None, **kwargs)
     return goal
 
 
-def update_goal(update_goal, name=None, description=None, start=None, end=None, community=None, **kwargs):
+def update_goal(update_goal, name=None, description=None, start=None, end=None, **kwargs):
     """Update an existing goal for a community. Only ``goal`` is required. All
     given goal properties will be updated. Any unspecified keyword arguments will
     be used to update the goal's metadata. To delete metadata for a community goal,
     pass ``None`` as the value for the to be deleted key in the kwarg key-value pair.
 
     :param update_goal: Identifier for the target community.
-    :type update_goal: :class:`pooldlib.postgresql.models.Goal` or long
+    :type update_goal: :class:`pooldlib.postgresql.models.Goal`
     :param name: The name of the newly created community goal.
     :type name: string
     :param description: The description of the newly created community goal.
     :type name: string
-    :param community: The community goal which the add a new goal.
-    :type community: long or :class:`pooldlib.postgresql.models.Community`
     :param kwargs: Keyword arguments consisting of key-value pairs to be added to the
                    newly created goal as metadata.
     :type kwargs: unspecified keyword arguments to the function.
-
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-             :class:`pooldlib.exceptions.UnknownCommunityGoalError`
     """
-    update_goal = goal(update_goal, community=community)
-    if update_goal is None:
-        raise UnknownCommunityGoalError()
-
     if name is not None:
         update_goal.name = name
     if description is not None:
@@ -494,7 +485,7 @@ def update_goal(update_goal, name=None, description=None, start=None, end=None, 
 
         session.commit()
 
-    return user
+    return update_goal
 
 
 def disable_goal(disable_goal):
@@ -504,13 +495,60 @@ def disable_goal(disable_goal):
 
     :param user: User which to disable.
     :type user: :class:`pooldlib.postgresql.models.User` or user identifier
-    :raises: :class:`pooldlib.exceptions.UnknownCommunityError`
-             :class:`pooldlib.exceptions.UnknownCommunityGoalError`
     """
-    disable_goal = goal(disable_goal)
-    if disable_goal is None:
-        raise UnknownCommunityGoalError()
-
     disable_goal.update_field('enabled', False)
     with transaction_session(auto_commit=True) as session:
         session.add(disable_goal)
+
+
+def associate_user_with_goal(community_goal, user, participation):
+    """Associate given user with ``community_goal``. The association will be described by
+    ``participation``, which can be one of 'opted-in', 'opted-out', 'participating',
+    'nonparticipating'. The values 'participating' and 'nonparticipating' should only be used
+    for default participation descriptions.  If a use opts to change their participation, use
+    appropriate descriptor of 'opted-in' or 'opted-out'. These rules should be followed precisely
+    for reporting purposes.
+
+    :raises: :class:`pooldlib.exceptions.InvalidGoalParticipationNameError`
+             :class:`pooldlib.exceptions.DuplicateCommunityGoalUserAssociationError`
+    """
+    cga = CommunityGoalAssociationModel()
+    cga.community_id = community_goal.community.id
+    cga.community_goal = community_goal
+    cga.user = user
+    cga.participation = participation
+
+    with transaction_session() as session:
+        session.add(cga)
+        try:
+            session.commit()
+        except SQLAlchemyDataError:
+            raise InvalidGoalParticipationNameError()
+        except SQLAlchemyIntegrityError:
+            raise DuplicateCommunityGoalUserAssociationError()
+    return cga
+
+
+def update_user_goal_association(community_goal, user, participation):
+    """Update a given user's association with ``community_goal``. The association will be
+    described by ``participation``, which can be one of 'opted-in' and 'opted-out', 'participating',
+    'nonparticipating'. The values 'participating' and 'nonparticipating' should only be used
+    for default participation descriptions.  If a use opts to change their participation, use
+    appropriate descriptor of 'opted-in' or 'opted-out'. These rules should be followed precisely
+    for reporting purposes.
+
+    :raises: :class:`pooldlib.exceptions.InvalidGoalParticipationNameError`
+    """
+    cga = CommunityGoalAssociationModel.query.filter_by(community=community_goal.community)\
+                                             .filter_by(community_goal=community_goal)\
+                                             .filter_by(user=user)\
+                                             .first()
+
+    if cga.update_field(participation=participation):
+        with transaction_session() as session:
+            session.add(cga)
+            try:
+                session.commit()
+            except SQLAlchemyDataError:
+                raise InvalidGoalParticipationNameError()
+    return cga
