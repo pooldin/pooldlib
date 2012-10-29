@@ -13,7 +13,7 @@ from tests.base import PooldLibPostgresBaseTest
 class TestAddEmailRecipients(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.old_sender = self.email.sender
@@ -28,7 +28,7 @@ class TestAddEmailRecipients(PooldLibPostgresBaseTest):
 class TestLoginSMTP(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -55,7 +55,7 @@ class TestLoginSMTP(PooldLibPostgresBaseTest):
 class TestDisconnectSMTP(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -87,7 +87,7 @@ class TestDisconnectSMTP(PooldLibPostgresBaseTest):
 class TestSendEmail(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -121,7 +121,7 @@ class TestSendEmail(PooldLibPostgresBaseTest):
 class TestAddEmailRecipients(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -180,7 +180,7 @@ class TestAddEmailRecipients(PooldLibPostgresBaseTest):
 class TestSetPlainTextContent(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.Email(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -192,7 +192,7 @@ class TestSetPlainTextContent(PooldLibPostgresBaseTest):
 
         self.email.add_recipient(self.user)
 
-    @patch('pooldlib.api.communication.MIMEText', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEText', autospec=True)
     def test_simple_set(self, mock_MIMEText):
         body = 'Test body content.'
         self.email.set_content(body)
@@ -203,7 +203,7 @@ class TestSetPlainTextContent(PooldLibPostgresBaseTest):
 class TestSetHTMLContent(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.HTMLEmail(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -215,7 +215,7 @@ class TestSetHTMLContent(PooldLibPostgresBaseTest):
 
         self.email.add_recipient(self.user)
 
-    @patch('pooldlib.api.communication.MIMEText', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEText', autospec=True)
     def test_simple_set(self, mock_MIMEText):
         mock_message = Mock()
         self.email.msg_alternative = mock_message
@@ -231,7 +231,7 @@ class TestSetHTMLContent(PooldLibPostgresBaseTest):
 class TestAttachImage(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        self.SMTP_patcher = patch('pooldlib.api.communication.smtplib')
+        self.SMTP_patcher = patch('pooldlib.api.communication.mail.smtplib')
         self.SMTP_patcher.start()
         self.email = email.HTMLEmail(None, None)
         self.addCleanup(self.SMTP_patcher.stop)
@@ -243,7 +243,7 @@ class TestAttachImage(PooldLibPostgresBaseTest):
 
         self.email.add_recipient(self.user)
 
-    @patch('pooldlib.api.communication.MIMEImage', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEImage', autospec=True)
     def test_attach_image_fp(self, mock_MIMEImage):
         mock_image_msg = Mock()
         mock_MIMEImage.return_value = mock_image_msg
@@ -262,7 +262,7 @@ class TestAttachImage(PooldLibPostgresBaseTest):
 
         mock_message.attach.assert_called_once_with(mock_image_msg)
 
-    @patch('pooldlib.api.communication.MIMEImage', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEImage', autospec=True)
     def test_attach_image_fp_img_id_strip(self, mock_MIMEImage):
         mock_image_msg = Mock()
         mock_MIMEImage.return_value = mock_image_msg
@@ -284,8 +284,8 @@ class TestAttachImage(PooldLibPostgresBaseTest):
 
         mock_message.attach.assert_called_once_with(mock_image_msg)
 
-    @patch('pooldlib.api.communication.MIMEImage', autospec=True)
-    @patch('pooldlib.api.communication.os', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEImage', autospec=True)
+    @patch('pooldlib.api.communication.mail.os', autospec=True)
     def test_attach_image_data(self, mock_os, mock_MIMEImage):
         mock_image_msg = Mock()
         mock_MIMEImage.return_value = mock_image_msg
@@ -307,8 +307,8 @@ class TestAttachImage(PooldLibPostgresBaseTest):
 
         mock_message.attach.assert_called_once_with(mock_image_msg)
 
-    @patch('pooldlib.api.communication.MIMEImage', autospec=True)
-    @patch('pooldlib.api.communication.os', autospec=True)
+    @patch('pooldlib.api.communication.mail.MIMEImage', autospec=True)
+    @patch('pooldlib.api.communication.mail.os', autospec=True)
     def test_attach_image_fpath(self, mock_os, mock_MIMEImage):
         mock_os.path.isfile.return_value = True
 

@@ -1,8 +1,8 @@
 """
-pooldlib.api.communication
+pooldlib.api.mail
 ===============================
 
-.. currentmodule:: pooldlib.api.communication
+.. currentmodule:: pooldlib.api.mail
 
 """
 import os
