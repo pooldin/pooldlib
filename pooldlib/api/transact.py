@@ -15,8 +15,7 @@ from pooldlib.postgresql import (Transaction as TransactionModel,
                                  Transfer as TransferModel,
                                  ExternalLedger as ExternalLedgerModel,
                                  InternalLedger as InternalLedgerModel,
-                                 CommunityGoalLedger as CommunityGoalLedgerModel,
-                                 Fee as FeeModel)
+                                 CommunityGoalLedger as CommunityGoalLedgerModel)
 from pooldlib.exceptions import (InsufficentFundsTransferError,
                                  InsufficentFundsTransactionError)
 
@@ -26,7 +25,7 @@ class Transact(object):
     (external) transactions. A user depositing funds in their poold account via stripe
     would be an example (external) transaction.
 
-    Example transfer usage:
+    Example User to Community transfer:
 
         >>> t = Transact()
         >>> t.transfer(Decimal('25.0000'), destination=a_community, origin=a_user)
@@ -35,15 +34,30 @@ class Transact(object):
         >>> # (USD) Balance of a_user is decreased by $25.000
         >>> # (USD) Balance of a_community is increased by $25.000
 
+    Example User to Community Goal transfer with Fee:
+
+        >>> t = Transact()
+        >>> currency = CurrencyModel.query.filter_by(code='USD').first()
+        >>> fee = FeeModel.query.get(1)
+        >>> t.transfer_to_community_goal(Decimal('25.0000'), currency, a_community_goal, a_user)
+        >>> t.transfer(Decimal('1.0000'), currency, destination=pooldin_co_user, origin=a_user, fee=fee)
+        >>> if not t.verify(): raise TransactionError()
+        >>> t.execute()
+        >>> # (USD) Balance of a_user is decreased by $26.00.
+        >>> # (USD) Balance of a_community is increased by $25.00, and a
+        >>> # transfer of $25.00 is registered for a_community_goal.
+
     Example transaction usage:
 
         >>> t = Transact()
-        >>> t.transaction(a_user, 'stripe', 'stripe-reference-number', <currency 'USD'>, credit=Decimal('50.0000'))
-        >>> t.transaction(a_user, 'stripe', 'stripe-reference-number', <currency 'USD'>, debit=Decimal('5.0000'), fee=1)
-        >>> t.transaction(a_user, 'poold', 'stripe-reference-number', <currency 'USD'>, debit=Decimal('5.0000'), fee=1)
+        >>> currency = CurrencyModel.query.filter_by(code='USD').first()
+        >>> fee = FeeModel.query.get(1)
+        >>> t.transaction(a_user, 'stripe', 'stripe-reference-number', currency, credit=Decimal('50.0000'))
+        >>> t.transaction(a_user, 'stripe', 'stripe-reference-number', currency, debit=Decimal('5.0000'), fee=fee)
+        >>> t.transaction(a_user, 'poold', 'stripe-reference-number', currency, debit=Decimal('5.0000'), fee=fee)
         >>> if not t.verify(): raise TransactionError()
         >>> t.execute()
-        >>> # (USD) Balance of a_user is increased by $40.000
+        >>> # (USD) Balance of a_user is increased by $40.00.
     """
 
     def __init__(self):
