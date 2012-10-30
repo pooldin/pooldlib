@@ -30,7 +30,7 @@ install:
 	@python setup.py install
 
 tests:
-	@nosetests -vx || true
+	@nosetests -vx ${TEST_ARGS} || true
 
 upload: upload-dev
 
