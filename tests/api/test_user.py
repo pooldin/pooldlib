@@ -1,10 +1,17 @@
 from uuid import uuid4 as uuid
 
 from nose.tools import raises, assert_equal, assert_true, assert_false
+from mock import patch
+
+import stripe
 
 from pooldlib.exceptions import (InvalidPasswordError,
                                  UsernameUnavailableError,
-                                 EmailUnavailableError)
+                                 EmailUnavailableError,
+                                 PreviousStripeAssociationError,
+                                 ExternalAPIUsageError,
+                                 ExternalAPIError,
+                                 ExternalAPIUnavailableError)
 from pooldlib.api import user
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
@@ -328,3 +335,126 @@ class TestValidatePassword(PooldLibPostgresBaseTest):
     @raises(InvalidPasswordError)
     def test_validate_password_too_short_exception(self):
         user.validate_password('defg', exception_on_invalid=True)
+
+
+class TestAssociateStripeToken(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestAssociateStripeToken, self).setUp()
+        self.payment_patcher = patch('pooldlib.api.user.pooldlib.payment')
+        self.patched_payment = self.payment_patcher.start()
+        self.addCleanup(self.payment_patcher.stop)
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.user = self.create_user(username, name, email=email)
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.existing_user = self.create_user(username, name, email=email)
+        self.existing_user_id = uuid().hex
+        self.create_user_meta(self.existing_user, stripe_user_id=self.existing_user_id)
+
+    def test_simple_exchange(self):
+        stripe_user_id = 'cus_%s' % uuid().hex
+        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
+
+        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.user)
+        user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
+                                       .filter_by(key='stripe_user_id')\
+                                       .first()
+        assert_true(user_meta is not None)
+        assert_equal(stripe_user_id, user_meta.value)
+
+    @raises(PreviousStripeAssociationError)
+    def test_exchange_preexisting_user(self):
+        stripe_user_id = 'cus_%s' % uuid().hex
+        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+
+        token = uuid().hex
+        user.associate_stripe_token(self.existing_user, token)
+
+    def test_exchange_preexisting_user_forced(self):
+        user_meta = UserMetaModel.query.filter_by(user_id=self.existing_user.id)\
+                                       .filter_by(key='stripe_user_id')\
+                                       .first()
+        assert_true(user_meta is not None)
+        assert_equal(self.existing_user_id, user_meta.value)
+
+        stripe_user_id = 'cus_%s' % uuid().hex
+        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+
+        token = uuid().hex
+        user.associate_stripe_token(self.existing_user, token, force=True)
+
+        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.existing_user)
+        user_meta = UserMetaModel.query.filter_by(user_id=self.existing_user.id)\
+                                       .filter_by(key='stripe_user_id')\
+                                       .first()
+        assert_true(user_meta is not None)
+        assert_equal(stripe_user_id, user_meta.value)
+
+    def test_exchange_preexisting_user_identical_customer_returned(self):
+        stripe_user_id = 'cus_%s' % uuid().hex
+        self.create_user_meta(self.user, stripe_user_id=stripe_user_id)
+
+        user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
+                                       .filter_by(key='stripe_user_id')\
+                                       .first()
+        assert_true(user_meta is not None)
+        assert_equal(stripe_user_id, user_meta.value)
+
+        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
+
+        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.user)
+        user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
+                                       .filter_by(key='stripe_user_id')\
+                                       .first()
+        assert_true(user_meta is not None)
+        assert_equal(stripe_user_id, user_meta.value)
+
+    @raises(ExternalAPIUsageError)
+    def test_stripe_authentication_error(self):
+        def exception(*args, **kwargs):
+            msg = 'Test Message'
+            raise stripe.AuthenticationError(msg)
+        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
+
+    @raises(ExternalAPIUsageError)
+    def test_stripe_invalid_request_error(self):
+        def exception(*args, **kwargs):
+            msg = 'Test Message'
+            raise stripe.InvalidRequestError(msg, None)
+        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
+
+    @raises(ExternalAPIError)
+    def test_stripe_api_error(self):
+        def exception(*args, **kwargs):
+            msg = 'Test Message'
+            raise stripe.APIError(msg)
+        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
+
+    @raises(ExternalAPIUnavailableError)
+    def test_stripe_api_unavailable_error(self):
+        def exception(*args, **kwargs):
+            msg = 'Test Message'
+            raise stripe.APIConnectionError(msg)
+        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        token = uuid().hex
+        user.associate_stripe_token(self.user, token)
