@@ -77,6 +77,11 @@ class EmailUnavailableError(UserAPIError):
     """Raised when an attempt is made to associate a user with an email
     address already paired with another user.
     """
+
+class PreviousStripeAssociationError(UserAPIError):
+    """Raised when an attempt is made to associate a stripe user with
+    a poold user who is already associated with one.
+    """
 ##################################
 
 
@@ -154,5 +159,30 @@ class InternalError(Exception):
 
 class GoWorkForBallmerError(InternalError):
     """Raised when you don't follow web standards.
+    """
+##################################
+
+
+##################################
+### Third Party API Exceptions
+class ExternalServiceError(Exception):
+    """Base class for errors related to external services.
+    """
+
+
+class ExternalAPIUsageError(ExternalServiceError):
+    """Raised when an error occurs related to the usage of an external service
+    when it is due to the miss use of the service.
+    """
+
+
+class ExternalAPIError(ExternalServiceError):
+    """Raised when an error occurs related to the usage of an external service
+    when it is due to an error caused by the external service.
+    """
+
+
+class ExternalAPIUnavailableError(ExternalServiceError):
+    """Raised when an external service is unavailable.
     """
 ##################################
