@@ -60,3 +60,11 @@ def _create_fees():
     for (n, d) in fees:
         factory(n, d)
     db.session.commit()
+
+
+def tag(*tags):
+    def wrap(func):
+        for tag in tags:
+            setattr(func, tag, True)
+        return func
+    return wrap

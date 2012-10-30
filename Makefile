@@ -30,7 +30,13 @@ install:
 	@python setup.py install
 
 tests:
-	@nosetests -vx ${TEST_ARGS} || true
+	@nosetests -vx -a '!external' ${TEST_ARGS} || true
+
+tests-external:
+	@nosetests -vx -a 'external' ${TEST_ARGS} || true
+
+tests-stripe:
+	@nosetests -vx -a 'stripe' ${TEST_ARGS} || true
 
 upload: upload-dev
 
