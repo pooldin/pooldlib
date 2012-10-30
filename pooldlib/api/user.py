@@ -10,15 +10,27 @@ import re
 from sqlalchemy.exc import IntegrityError as SQLAlchemyIntegrityError
 from sqlalchemy.orm.attributes import manager_of_class
 
+from stripe import (AuthenticationError as StripeAuthenticationError,
+                    InvalidRequestError as StripeInvalidRequestError,
+                    APIError as StripeAPIError,
+                    APIConnectionError as StripeAPIConnectionError)
+
+import pooldlib.log
+import pooldlib.payment
 from pooldlib.generators import alphanumeric_string
 from pooldlib.exceptions import (InvalidPasswordError,
                                  EmailUnavailableError,
-                                 UsernameUnavailableError)
+                                 UsernameUnavailableError,
+                                 PreviousStripeAssociationError,
+                                 ExternalAPIUsageError,
+                                 ExternalAPIError,
+                                 ExternalAPIUnavailableError)
 from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
                                  UserMeta as UserMetaModel)
 
+logger = pooldlib.log.get_logger(None, logging_name=__name__)
 
 USER_TABLE = manager_of_class(UserModel).mapper.mapped_table
 
@@ -37,6 +49,9 @@ def get_by_id(user_id):
     query = UserModel.query.filter_by(id=user_id)
     query = query.filter_by(enabled=True)
     user = query.first()
+    if not user:
+        msg = 'No user found for requested user id.'
+        logger.debug(msg, data=user_id)
     return user or None
 
 
@@ -51,6 +66,9 @@ def get_by_username(username):
     """
     query = UserModel.query.filter_by(username=username, enabled=True)
     user = query.first()
+    if not user:
+        msg = 'No user found for requested username.'
+        logger.debug(msg, data=username)
     return user or None
 
 
@@ -68,6 +86,9 @@ def get_by_email(email):
     query = query.filter(UserMetaModel.key == 'email')
     query = query.filter(UserMetaModel.value == email.lower())
     user = query.first()
+    if not user:
+        msg = 'No user found for requested email address.'
+        logger.debug(msg, data=email)
     return user or None
 
 
@@ -103,8 +124,29 @@ def associate_stripe_token(user, stripe_token, force=False):
     :type force: boolean
 
     :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
+             :class:`pooldlib.exceptions.ExternalAPIUsageError`
+             :class:`pooldlib.exceptions.ExternalAPIError`
+             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
     """
-    raise NotImplementedError()
+    try:
+        stripe_user_id = pooldlib.payment.exchange_stripe_token_for_user(stripe_token, user)
+        previous_association = hasattr(user, 'stripe_user_id') and user.stripe_user_id != stripe_user_id
+        if previous_association and not force:
+            msg = 'User has a previously associated stripe user id and force was not set to True.'
+            raise PreviousStripeAssociationError(msg)
+    except (StripeAuthenticationError, StripeInvalidRequestError):
+        # Errors caused by us
+        msg = 'An error occurred in pooldlib while exchanging one time use token for Stripe user'
+        raise ExternalAPIUsageError(msg)
+    except StripeAPIError:
+        # Errors caused by stripe
+        msg = 'An error occurred with Stripe while exchanging one time use token for Stripe user'
+        raise ExternalAPIError(msg)
+    except StripeAPIConnectionError:
+        # Errors caused by trucks getting caught in the tubes
+        msg = 'An error occurred while connecting to the Stripe API.'
+        raise ExternalAPIUnavailableError(msg)
+    update(user, stripe_user_id=stripe_user_id)
 
 
 def connections(user, as_organizer=True):
