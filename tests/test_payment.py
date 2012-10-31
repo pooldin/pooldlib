@@ -6,8 +6,7 @@ import stripe
 from nose.tools import raises, assert_equal, assert_true
 from mock import patch, Mock
 
-from pooldlib import payment
-from pooldlib import Config, DIR
+from pooldlib import config, DIR, payment
 from pooldlib.postgresql.models import (Currency as CurrencyModel,
                                         Fee as FeeModel)
 
@@ -27,11 +26,12 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         name = 'StripeUser %s' % n[16:]
         email = 'StripeUser-%s@example.com' % n[16:]
         self.user = self.create_user(username, name, email=email)
-        self.user_balance = self.create_balance(user=self.user, currency_code='USD')
 
-        config_path = os.path.join(DIR, '.env')
-        self.config = Config.from_file(config_path)
-        payment.configure(self.config)
+        try:
+            config_path = os.path.join(os.path.dirname(DIR), '.env')
+            config.update_with_file(config_path)
+        except:
+            pass
 
         self.logger_patcher = patch('pooldlib.payment.logger')
         self.patched_logger = self.logger_patcher.start()
@@ -45,40 +45,42 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         # NOTE :: this test depends on the following environment variables
         # NOTE :: being defined: TEST_CARD_VISA_NUMBER, TEST_CARD_VISA_CVC, STRIPE_SECRET_KEY
 
-        exp = datetime.now() + timedelta(days=265)
+        exp = datetime.now() + timedelta(days=365)
         # Get a token from stripe for tests
-        card = dict(number=self.config.TEST_CARD_VISA_NUMBER,
-                    cvc=self.config.TEST_CARD_VISA_CVC,
+        card = dict(number=config.TEST_CARD_VISA_NUMBER,
+                    cvc=config.TEST_CARD_VISA_CVC,
                     exp_month=exp.month,
                     exp_year=exp.year)
-        token = stripe.Token.create(card=card)
+        token = stripe.Token.create(api_key=config.STRIPE_SECRET_KEY, card=card)
 
-        stripe_user_id = payment.exchange_stripe_token_for_user(token.id, self.user)
+        stripe_customer = payment.StripeCustomer(config.STRIPE_SECRET_KEY)
+        stripe_user_id = stripe_customer.token_for_customer(token.id, self.user)
         # We don't know what the token will be, but we know it should be a
         # string, and start with 'cus_'
         assert_true(isinstance(stripe_user_id, basestring))
         assert_true(stripe_user_id.startswith('cus_'))
 
-    @patch('pooldlib.payment.Customer', spec=stripe.Customer)
-    def test_stripe_create_call(self, mock_customer_module):
+    @patch('pooldlib.payment._Customer', spec=stripe.Customer)
+    def test_customer_create_call(self, mock_customer_module):
         mock_customer = Mock()
         mock_customer.id = 'cus_%s' % uuid().hex
         mock_customer_module.create.return_value = mock_customer
 
         token = uuid().hex
 
-        stripe_user_id = payment.exchange_stripe_token_for_user(token, self.user)
+        stripe_customer = payment.StripeCustomer(None)
+        stripe_user_id = stripe_customer.token_for_customer(token, self.user)
 
         exp_kwargs = dict(description='Poold user: %s' % self.user.id,
                           card=token,
                           email=self.user.email)
-        mock_customer_module.create.assert_called_once_with(**exp_kwargs)
+        mock_customer_module.create.assert_called_once_with(api_key=None, **exp_kwargs)
         assert_equal(mock_customer.id, stripe_user_id)
-        self.patched_logger.transaction.assert_called_once_with('New Stripe User Created',
+        self.patched_logger.transaction.assert_called_once_with('New Stripe Customer Created',
                                                                 **exp_kwargs)
 
     @raises(stripe.AuthenticationError)
-    @patch('pooldlib.payment.Customer', spec=stripe.Customer)
+    @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_authentication_error(self, mock_customer):
         msg = 'Test message'
 
@@ -87,15 +89,22 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         mock_customer.create.side_effect = exception
 
         token = uuid().hex
+        kwargs = dict(card=token,
+                      description='Poold user: %s' % self.user.id,
+                      email=self.user.email)
+        meta = dict(user=str(self.user), request_args=kwargs)
+        data = dict(error=stripe.AuthenticationError.__name__,
+                    message=msg)
+        stripe_customer = payment.StripeCustomer(None)
         try:
-            payment.exchange_stripe_token_for_user(token, self.user)
+            stripe_customer.token_for_customer(token, self.user)
         except:
-            msg = 'Stripe Authentication Error: %s' % msg
-            self.patched_logger.error.assert_called_once_with(msg)
+            msg = 'Stripe Authentication Error.'
+            self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
     @raises(stripe.InvalidRequestError)
-    @patch('pooldlib.payment.Customer', spec=stripe.Customer)
+    @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_invalid_request_error(self, mock_customer):
         msg = 'Test message'
 
@@ -104,15 +113,22 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         mock_customer.create.side_effect = exception
 
         token = uuid().hex
+        kwargs = dict(card=token,
+                      description='Poold user: %s' % self.user.id,
+                      email=self.user.email)
+        meta = dict(user=str(self.user), request_args=kwargs)
+        data = dict(error=stripe.InvalidRequestError.__name__,
+                    message=msg)
+        stripe_customer = payment.StripeCustomer(None)
         try:
-            payment.exchange_stripe_token_for_user(token, self.user)
+            stripe_customer.token_for_customer(token, self.user)
         except:
-            msg = 'Stripe Invalid Request Error: %s' % msg
-            self.patched_logger.error.assert_called_once_with(msg)
+            msg = 'Stripe Invalid Request Error.'
+            self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
     @raises(stripe.APIConnectionError)
-    @patch('pooldlib.payment.Customer', spec=stripe.Customer)
+    @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_api_connection_error(self, mock_customer):
         msg = 'Test message'
 
@@ -121,16 +137,23 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         mock_customer.create.side_effect = exception
 
         token = uuid().hex
+        kwargs = dict(card=token,
+                      description='Poold user: %s' % self.user.id,
+                      email=self.user.email)
+        meta = dict(user=str(self.user), request_args=kwargs)
+        data = dict(error=stripe.APIConnectionError.__name__,
+                    message=msg)
+        stripe_customer = payment.StripeCustomer(None)
         try:
-            payment.exchange_stripe_token_for_user(token, self.user)
+            stripe_customer.token_for_customer(token, self.user)
         except:
-            msg = 'There was an error connecting to the Stripe API: %s' % msg
-            self.patched_logger.error.assert_called_once_with(msg)
+            msg = 'There was an error connecting to the Stripe API.'
+            self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
     @raises(stripe.APIError)
-    @patch('pooldlib.payment.Customer', spec=stripe.Customer)
-    def test_api_error_error(self, mock_customer):
+    @patch('pooldlib.payment._Customer', spec=stripe.Customer)
+    def test_api_error(self, mock_customer):
         msg = 'Test message'
 
         def exception(*args, **kwargs):
@@ -138,9 +161,16 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         mock_customer.create.side_effect = exception
 
         token = uuid().hex
+        kwargs = dict(card=token,
+                      description='Poold user: %s' % self.user.id,
+                      email=self.user.email)
+        meta = dict(user=str(self.user), request_args=kwargs)
+        data = dict(error=stripe.APIError.__name__,
+                    message=msg)
+        stripe_customer = payment.StripeCustomer(None)
         try:
-            payment.exchange_stripe_token_for_user(token, self.user)
+            stripe_customer.token_for_customer(token, self.user)
         except:
-            msg = 'An unknown error occurred while interacting with the Stripe API: %s' % msg
-            self.patched_logger.error.assert_called_once_with(msg)
+            msg = 'An unknown error occurred while interacting with the Stripe API.'
+            self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
