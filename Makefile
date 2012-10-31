@@ -1,10 +1,22 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
-.PHONY: clean clean-py dev docs docs-clean docs-open install tests \
-		upload upload-dev upload-nightly upload-release
+.PHONY: clean clean-py dev docs docs-clean docs-open install \
+	    tests tests-tag tests-external tests-stripe \
+		upload upload-dev upload-nightly upload-release shell ipy bpy
 
 REV=$(shell git rev-parse --short HEAD)
 TIMESTAMP=$(shell date +'%s')
+RUN=foreman run
+MANAGE=$(RUN) python manage.py
+
+shell:
+	@$(MANAGE) shell
+
+ipy:
+	@$(MANAGE) shell -i
+
+bpy:
+	@$(MANAGE) shell -b
 
 clean:
 	@$(MAKE) docs-clean clean-py
@@ -29,6 +41,8 @@ docs-open:
 install:
 	@python setup.py install
 
+tests-tag:
+	@nosetests -vx -a '${TEST_ARGS}' || true
 tests:
 	@nosetests -vx -a '!external' ${TEST_ARGS} || true
 
