@@ -49,6 +49,20 @@ class Config(object):
         for (key, value) in dict.items():
             setattr(self, key, value)
 
+    def update_with_file(self, file_path):
+        """Read configuration from file. Currently all values are read
+        in as strings. Configuration file should be in the format
+
+            config_key = config_value
+
+        Lines starting with ``#`` will be ignored.
+
+        :param file_path: The system path at which the configuration file is located.
+        :type file_path: string
+        """
+        config_dict = self._read_file(file_path)
+        self.update(config_dict)
+
     @classmethod
     def from_file(cls, file_path):
         """Read configuration from file. Currently all values are read
@@ -61,10 +75,18 @@ class Config(object):
         :param file_path: The system path at which the configuration file is located.
         :type file_path: string
         """
+        config = cls()
+        config_dict = cls._read_file(file_path)
+        for (key, value) in config_dict.items():
+            setattr(config, key.strip(), value.strip())
+        return config
+
+    @classmethod
+    def _read_file(cls, file_path):
         with open(file_path, 'r') as fp:
-            config = cls()
+            config_dict = dict()
             for line in fp.readlines():
                 if line.strip() and not line.startswith('#'):
                     key, value = line.split('=')
-                    setattr(config, key.strip(), value.strip())
-        return config
+                    config_dict[key.strip()] = value.strip()
+        return config_dict
