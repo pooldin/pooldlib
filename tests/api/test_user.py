@@ -1,7 +1,7 @@
 from uuid import uuid4 as uuid
 
 from nose.tools import raises, assert_equal, assert_true, assert_false
-from mock import patch
+from mock import Mock, patch
 
 import stripe
 
@@ -17,6 +17,7 @@ from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
                                  UserMeta as UserMetaModel)
 
+from tests import tag
 from tests.base import PooldLibPostgresBaseTest
 
 
@@ -39,28 +40,33 @@ class TestGetUser(PooldLibPostgresBaseTest):
 
         self.session = db.session
 
+    @tag('user')
     def test_get_with_username(self):
         u = user.get_by_username(self.username_a)
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
 
+    @tag('user')
     def test_get_with_email(self):
         u = user.get_by_email(self.email_a)
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
 
+    @tag('user')
     def test_get_with_email_case_difference(self):
         u = user.get_by_email(self.email_a.upper())
         assert_equal(self.username_a, u.username)
         assert_equal(self.name_a, u.name)
         assert_equal(self.email_a, u.email)
 
+    @tag('user')
     def test_get_non_existant_user(self):
         non_user = user.get_by_username('nonexistant')
         assert_true(non_user is None)
 
+    @tag('user')
     def test_get_disabled_user(self):
         self.user_a.enabled = False
         self.session.commit()
@@ -78,6 +84,7 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         self.user = self.create_user(self.username, self.name, self.email)
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
 
+    @tag('user')
     def test_create_user_returned(self):
         username = uuid().hex
         name = '%s %s' % (username[:16], username[16:])
@@ -85,10 +92,12 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         u = user.create(username, username, name=name, email=email)
         assert_true(isinstance(u, UserModel))
 
+    @tag('user')
     @raises(UsernameUnavailableError)
     def test_create_duplicate_username(self):
         user.create(self.username, self.username, name=self.name)
 
+    @tag('user')
     @raises(EmailUnavailableError)
     def test_create_duplicate_email(self):
         username = uuid().hex
@@ -96,6 +105,7 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         email = '%s@example.com' % self.username
         user.create(username, username, name=name, email=email)
 
+    @tag('user')
     def test_create_user_no_name_no_metadata(self):
         username = uuid().hex
         user.create(username, username + '1')
@@ -106,6 +116,7 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         assert_true(check_user.enabled)
         assert_false(check_user.verified)
 
+    @tag('user')
     def test_create_user_no_metadata(self):
         username = uuid().hex
         name = '%s %s' % (username[:16], username[16:])
@@ -119,6 +130,7 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         assert_true(check_user.enabled)
         assert_false(check_user.verified)
 
+    @tag('user')
     def test_create_user_with_metadata(self):
         username = uuid().hex
         name = '%s %s' % (username[:16], username[16:])
@@ -136,10 +148,12 @@ class TestCreateUser(PooldLibPostgresBaseTest):
         assert_true(check_user.enabled)
         assert_false(check_user.verified)
 
+    @tag('user')
     @raises(InvalidPasswordError)
     def test_create_with_short_password(self):
         user.create('imauser', 'short1')
 
+    @tag('user')
     @raises(InvalidPasswordError)
     def test_create_with_numberless_password(self):
         user.create('imauser', 'badpassword')
@@ -159,6 +173,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
 
         self.create_user_meta(self.user, meta_key_one='meta value one')
 
+    @tag('user')
     def test_clear_name_attribute(self):
         check_user = UserModel.query.filter_by(username=self.username).first()
         assert_equal(self.name, check_user.name)
@@ -167,10 +182,12 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         check_user = UserModel.query.filter_by(username=self.username).first()
         assert_true(check_user.name is None)
 
+    @tag('user')
     @raises(InvalidPasswordError)
     def test_update_with_password_invalid_password(self):
         user.update(self.username, password='thisshouldfail')
 
+    @tag('user')
     def test_update_with_password(self):
         new_password = 'abcde123'
         old_pass_encrypt = self.user.password
@@ -179,6 +196,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         assert_false(old_pass_encrypt == self.user.password)
         assert_true(self.user.is_password(new_password))
 
+    @tag('user')
     @raises(EmailUnavailableError)
     def test_update_with_existing_email(self):
         username_two = uuid().hex
@@ -187,6 +205,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         new_user = self.create_user(username_two, name_two, email_two)
         user.update(new_user, email=self.email)
 
+    @tag('user')
     @raises(UsernameUnavailableError)
     def test_update_with_existing_username(self):
         username_two = uuid().hex
@@ -195,6 +214,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         new_user = self.create_user(username_two, name_two, email_two)
         user.update(new_user, username=self.username)
 
+    @tag('user')
     def test_update_single_field(self):
         newname = uuid().hex
         newname = '%s %s' % (newname[:16], newname[16:])
@@ -207,6 +227,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         assert_equal(newname, check_user.name)
         assert_true(old_mod < check_user.modified)
 
+    @tag('user')
     def test_update_name_and_username(self):
         id = self.user.id
         newusername = newname = uuid().hex
@@ -222,6 +243,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         assert_equal(newusername, check_user.username)
         assert_true(old_mod < check_user.modified)
 
+    @tag('user')
     def test_update_meta_email(self):
         newemail = '%s@example.com' % uuid().hex
         assert_equal(self.email, self.user.email)
@@ -234,6 +256,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
                                              .first()
         assert_equal(newemail, check_user_meta.value)
 
+    @tag('user')
     def test_update_add_meta(self):
         newkey = 'testy-mckey'
         newvalue = 'testy-mcvalue'
@@ -249,6 +272,7 @@ class TestUpdateUser(PooldLibPostgresBaseTest):
         assert_equal(newkey, check_user_meta.key)
         assert_equal(newvalue, check_user_meta.value)
 
+    @tag('user')
     def test_remove_meta(self):
         old_meta_value = self.user.meta_key_one
         test_user = UserModel.query.filter_by(username=self.username).first()
@@ -271,6 +295,7 @@ class TestResetPassword(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
+    @tag('user')
     def test_password_reset(self):
         old_pass_encrypt = self.user.password
         new_password = user.reset_password(self.user)
@@ -291,6 +316,7 @@ class TestDeactivateUser(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
+    @tag('user')
     def test_disabled_user(self):
         user.disable(self.user)
         assert_true(user.get_by_email(self.email) is None)
@@ -308,10 +334,12 @@ class TestVerifyPassword(PooldLibPostgresBaseTest):
         self.user_balance = self.create_balance(user=self.user, currency_code='USD')
         self.session = db.session
 
+    @tag('user')
     def test_verify_correct_password(self):
         password = self.user.username + '1'
         assert_true(user.verify_password(self.user, password))
 
+    @tag('user')
     def test_verify_incorrect_password(self):
         password = 'incorrect-password'
         assert_false(user.verify_password(self.user, password))
@@ -319,19 +347,24 @@ class TestVerifyPassword(PooldLibPostgresBaseTest):
 
 class TestValidatePassword(PooldLibPostgresBaseTest):
 
+    @tag('user')
     def test_validate_good_password(self):
         assert_true(user.validate_password('1abcdef'))
 
+    @tag('user')
     def test_validate_password_no_number(self):
         assert_false(user.validate_password('abcdefg'))
 
+    @tag('user')
     def test_validate_password_to_short(self):
         assert_false(user.validate_password('defg'))
 
+    @tag('user')
     @raises(InvalidPasswordError)
     def test_validate_password_no_number_exception(self):
         user.validate_password('abcdefg', exception_on_invalid=True)
 
+    @tag('user')
     @raises(InvalidPasswordError)
     def test_validate_password_too_short_exception(self):
         user.validate_password('defg', exception_on_invalid=True)
@@ -341,8 +374,10 @@ class TestAssociateStripeToken(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestAssociateStripeToken, self).setUp()
-        self.payment_patcher = patch('pooldlib.api.user.pooldlib.payment')
-        self.patched_payment = self.payment_patcher.start()
+        self.payment_patcher = patch('pooldlib.api.user.StripeCustomer')
+        self.payment_patched = self.payment_patcher.start()
+        self.patched_payment = Mock()
+        self.payment_patched.return_value = self.patched_payment
         self.addCleanup(self.payment_patcher.stop)
 
         n = uuid().hex
@@ -357,104 +392,266 @@ class TestAssociateStripeToken(PooldLibPostgresBaseTest):
         email = 'StripeUser-%s@example.com' % n[16:]
         self.existing_user = self.create_user(username, name, email=email)
         self.existing_user_id = uuid().hex
-        self.create_user_meta(self.existing_user, stripe_user_id=self.existing_user_id)
+        self.create_user_meta(self.existing_user, stripe_customer_id=self.existing_user_id)
 
+    @tag('user')
     def test_simple_exchange(self):
-        stripe_user_id = 'cus_%s' % uuid().hex
-        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+        stripe_customer_id = 'cus_%s' % uuid().hex
+        self.patched_payment.token_for_customer.return_value = stripe_customer_id
 
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
 
-        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.user)
+        self.patched_payment.token_for_customer.assert_called_once_with(token, self.user)
         user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
-                                       .filter_by(key='stripe_user_id')\
+                                       .filter_by(key='stripe_customer_id')\
                                        .first()
         assert_true(user_meta is not None)
-        assert_equal(stripe_user_id, user_meta.value)
+        assert_equal(stripe_customer_id, user_meta.value)
 
+    @tag('user')
     @raises(PreviousStripeAssociationError)
     def test_exchange_preexisting_user(self):
-        stripe_user_id = 'cus_%s' % uuid().hex
-        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+        stripe_customer_id = 'cus_%s' % uuid().hex
+        self.patched_payment.token_for_customer.return_value = stripe_customer_id
 
         token = uuid().hex
-        user.associate_stripe_token(self.existing_user, token)
+        user.associate_stripe_token(self.existing_user, token, None)
 
+    @tag('user')
     def test_exchange_preexisting_user_forced(self):
         user_meta = UserMetaModel.query.filter_by(user_id=self.existing_user.id)\
-                                       .filter_by(key='stripe_user_id')\
+                                       .filter_by(key='stripe_customer_id')\
                                        .first()
         assert_true(user_meta is not None)
         assert_equal(self.existing_user_id, user_meta.value)
 
-        stripe_user_id = 'cus_%s' % uuid().hex
-        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+        stripe_customer_id = 'cus_%s' % uuid().hex
+        self.patched_payment.token_for_customer.return_value = stripe_customer_id
 
         token = uuid().hex
-        user.associate_stripe_token(self.existing_user, token, force=True)
+        user.associate_stripe_token(self.existing_user, token, None, force=True)
 
-        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.existing_user)
+        self.patched_payment.token_for_customer.assert_called_once_with(token, self.existing_user)
         user_meta = UserMetaModel.query.filter_by(user_id=self.existing_user.id)\
-                                       .filter_by(key='stripe_user_id')\
+                                       .filter_by(key='stripe_customer_id')\
                                        .first()
         assert_true(user_meta is not None)
-        assert_equal(stripe_user_id, user_meta.value)
+        assert_equal(stripe_customer_id, user_meta.value)
 
+    @tag('user')
     def test_exchange_preexisting_user_identical_customer_returned(self):
-        stripe_user_id = 'cus_%s' % uuid().hex
-        self.create_user_meta(self.user, stripe_user_id=stripe_user_id)
+        stripe_customer_id = 'cus_%s' % uuid().hex
+        self.create_user_meta(self.user, stripe_customer_id=stripe_customer_id)
 
         user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
-                                       .filter_by(key='stripe_user_id')\
+                                       .filter_by(key='stripe_customer_id')\
                                        .first()
         assert_true(user_meta is not None)
-        assert_equal(stripe_user_id, user_meta.value)
+        assert_equal(stripe_customer_id, user_meta.value)
 
-        self.patched_payment.exchange_stripe_token_for_user.return_value = stripe_user_id
+        self.patched_payment.token_for_customer.return_value = stripe_customer_id
 
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
 
-        self.patched_payment.exchange_stripe_token_for_user.assert_called_once_with(token, self.user)
+        self.patched_payment.token_for_customer.assert_called_once_with(token, self.user)
         user_meta = UserMetaModel.query.filter_by(user_id=self.user.id)\
-                                       .filter_by(key='stripe_user_id')\
+                                       .filter_by(key='stripe_customer_id')\
                                        .first()
         assert_true(user_meta is not None)
-        assert_equal(stripe_user_id, user_meta.value)
+        assert_equal(stripe_customer_id, user_meta.value)
 
+    @tag('user')
     @raises(ExternalAPIUsageError)
     def test_stripe_authentication_error(self):
         def exception(*args, **kwargs):
             msg = 'Test Message'
             raise stripe.AuthenticationError(msg)
-        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        self.patched_payment.token_for_customer.side_effect = exception
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
 
+    @tag('user')
     @raises(ExternalAPIUsageError)
     def test_stripe_invalid_request_error(self):
         def exception(*args, **kwargs):
             msg = 'Test Message'
             raise stripe.InvalidRequestError(msg, None)
-        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        self.patched_payment.token_for_customer.side_effect = exception
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
 
+    @tag('user')
     @raises(ExternalAPIError)
     def test_stripe_api_error(self):
         def exception(*args, **kwargs):
             msg = 'Test Message'
             raise stripe.APIError(msg)
-        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        self.patched_payment.token_for_customer.side_effect = exception
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
 
+    @tag('user')
     @raises(ExternalAPIUnavailableError)
-    def test_stripe_api_unavailable_error(self):
+    def test_stripe_api_connection_error(self):
         def exception(*args, **kwargs):
             msg = 'Test Message'
             raise stripe.APIConnectionError(msg)
-        self.patched_payment.exchange_stripe_token_for_user.side_effect = exception
+        self.patched_payment.token_for_customer.side_effect = exception
         token = uuid().hex
-        user.associate_stripe_token(self.user, token)
+        user.associate_stripe_token(self.user, token, None)
+
+
+class TestAssociateStripeAuthorizationCode(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestAssociateStripeAuthorizationCode, self).setUp()
+        self.stripe_user_patcher = patch('pooldlib.api.user.StripeUser')
+        self.stripe_user_patched = self.stripe_user_patcher.start()
+        self.stripe_user_instance = Mock()
+        self.stripe_user_patched.return_value = self.stripe_user_instance
+        self.addCleanup(self.stripe_user_patcher.stop)
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.user = self.create_user(username, name, email=email)
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.existing_user = self.create_user(username, name, email=email)
+        self.existing_user_id = uuid().hex
+        self.stripe_user_id = uuid().hex
+        self.create_user_meta(self.existing_user, stripe_user_id=self.stripe_user_id)
+
+    @tag('user')
+    def test_simple_associate(self):
+        auth_token = uuid().hex
+        ret = dict(user_id=uuid().hex,
+                   access_token=uuid().hex,
+                   public_key=uuid().hex,
+                   scope='read-write')
+
+        self.stripe_user_instance.process_authorization_code.return_value = ret
+
+        # Confirm the user has no previous association
+        assert_true(self._get_user_meta(self.user, 'stripe_user_id') is None)
+        assert_true(self._get_user_meta(self.user, 'stripe_user_token') is None)
+        assert_true(self._get_user_meta(self.user, 'stripe_user_public_key') is None)
+        assert_true(self._get_user_meta(self.user, 'stripe_user_grant_scope') is None)
+
+        user.associate_stripe_authorization_code(self.user, auth_token, None)
+        self.stripe_user_instance.process_authorization_code.assert_called_once_with(auth_token, self.user)
+
+        assert_equal(ret['user_id'], self._get_user_meta(self.user, 'stripe_user_id').value)
+        assert_equal(ret['access_token'], self._get_user_meta(self.user, 'stripe_user_token').value)
+        assert_equal(ret['public_key'], self._get_user_meta(self.user, 'stripe_user_public_key').value)
+        assert_equal(ret['scope'], self._get_user_meta(self.user, 'stripe_user_grant_scope').value)
+
+    @tag('user')
+    @raises(PreviousStripeAssociationError)
+    def test_associate_preexisting_user(self):
+        auth_token = uuid().hex
+        ret = dict(user_id=uuid().hex,
+                   access_token=uuid().hex,
+                   public_key=uuid().hex,
+                   scope='read-write')
+
+        self.stripe_user_instance.process_authorization_code.return_value = ret
+        user.associate_stripe_authorization_code(self.existing_user, auth_token, None)
+
+    @tag('user')
+    def test_associate_preexisting_user_force(self):
+        auth_token = uuid().hex
+        ret = dict(user_id=uuid().hex,
+                   access_token=uuid().hex,
+                   public_key=uuid().hex,
+                   scope='read-write')
+
+        self.stripe_user_instance.process_authorization_code.return_value = ret
+
+        # Confirm the user has preexisting stripe user id
+        assert_equal(self.stripe_user_id, self._get_user_meta(self.existing_user, 'stripe_user_id').value)
+
+        user.associate_stripe_authorization_code(self.user, auth_token, None, force=True)
+        self.stripe_user_instance.process_authorization_code.assert_called_once_with(auth_token, self.user)
+
+        assert_equal(ret['user_id'], self._get_user_meta(self.user, 'stripe_user_id').value)
+        assert_equal(ret['access_token'], self._get_user_meta(self.user, 'stripe_user_token').value)
+        assert_equal(ret['public_key'], self._get_user_meta(self.user, 'stripe_user_public_key').value)
+        assert_equal(ret['scope'], self._get_user_meta(self.user, 'stripe_user_grant_scope').value)
+
+    @tag('user')
+    def test_associate_preexisting_user_identical_user_id_returned(self):
+        auth_token = uuid().hex
+        ret = dict(user_id=self.stripe_user_id,
+                   access_token=uuid().hex,
+                   public_key=uuid().hex,
+                   scope='read-write')
+
+        self.stripe_user_instance.process_authorization_code.return_value = ret
+
+        # Confirm the user has preexisting stripe user id
+        assert_equal(self.stripe_user_id, self._get_user_meta(self.existing_user, 'stripe_user_id').value)
+
+        user.associate_stripe_authorization_code(self.user, auth_token, None, force=True)
+        self.stripe_user_instance.process_authorization_code.assert_called_once_with(auth_token, self.user)
+
+        assert_equal(ret['user_id'], self._get_user_meta(self.user, 'stripe_user_id').value)
+        assert_equal(ret['access_token'], self._get_user_meta(self.user, 'stripe_user_token').value)
+        assert_equal(ret['public_key'], self._get_user_meta(self.user, 'stripe_user_public_key').value)
+        assert_equal(ret['scope'], self._get_user_meta(self.user, 'stripe_user_grant_scope').value)
+
+    @tag('user')
+    @raises(ExternalAPIUsageError)
+    def test_stripe_authentication_error(self):
+        auth_token = uuid().hex
+        msg = 'Test message'
+
+        def exception(*args, **kwargs):
+            raise stripe.AuthenticationError(msg)
+        self.stripe_user_instance.process_authorization_code.side_effect = exception
+        user.associate_stripe_authorization_code(self.user, auth_token, None)
+
+    @tag('user')
+    @raises(ExternalAPIUsageError)
+    def test_stripe_invalid_request_error(self):
+        auth_token = uuid().hex
+        msg = 'Test message'
+
+        def exception(*args, **kwargs):
+            raise stripe.InvalidRequestError(msg, None)
+        self.stripe_user_instance.process_authorization_code.side_effect = exception
+        user.associate_stripe_authorization_code(self.user, auth_token, None)
+
+    @tag('user')
+    @raises(ExternalAPIError)
+    def test_stripe_api_error(self):
+        auth_token = uuid().hex
+        msg = 'Test message'
+
+        def exception(*args, **kwargs):
+            raise stripe.APIError(msg)
+        self.stripe_user_instance.process_authorization_code.side_effect = exception
+        user.associate_stripe_authorization_code(self.user, auth_token, None)
+
+    @tag('user')
+    @raises(ExternalAPIUnavailableError)
+    def test_stripe_api_connection_error(self):
+        auth_token = uuid().hex
+        msg = 'Test message'
+
+        def exception(*args, **kwargs):
+            raise stripe.APIConnectionError(msg)
+        self.stripe_user_instance.process_authorization_code.side_effect = exception
+        user.associate_stripe_authorization_code(self.user, auth_token, None)
+
+    def _get_user_meta(self, user, key):
+        user_meta = UserMetaModel.query.filter_by(user_id=user.id)\
+                                       .filter_by(key=key)\
+                                       .first()
+        return user_meta

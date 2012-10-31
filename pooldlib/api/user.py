@@ -16,7 +16,7 @@ from stripe import (AuthenticationError as StripeAuthenticationError,
                     APIConnectionError as StripeAPIConnectionError)
 
 import pooldlib.log
-import pooldlib.payment
+from pooldlib.payment import StripeCustomer, StripeUser
 from pooldlib.generators import alphanumeric_string
 from pooldlib.exceptions import (InvalidPasswordError,
                                  EmailUnavailableError,
@@ -105,12 +105,14 @@ def get_balance(user, currency):
     raise NotImplementedError()
 
 
-def associate_stripe_token(user, stripe_token, force=False):
-    """Exchange a Stripe one-time use token for a user id in Stripe's
-    system. The user's stripe user id will be stored as UserMeta data and
-    accessible via ``User.stripe_id``.  If the user is already associated
-    with a different Stripe user id an exception will be raised unless
-    ``force=True``.
+def associate_stripe_token(user, stripe_token, stripe_key, force=False):
+    """Exchange a Stripe one-time use token for a customer id in Stripe's
+    system. The poold user's stripe customer id will be stored as UserMeta data and
+    accessible via ``User.stripe_customer_id``.  If the user is already
+    associated with a different Stripe customer id an exception will be raised
+    unless ``force=True``.
+
+    Stripe Customer: A user who is utilizing stripe to pay *into* our system.
 
     :param user: User for which to associate the retrieved Strip user id.
     :type user: :class:`pooldlib.postgresql.models.User`
@@ -129,10 +131,11 @@ def associate_stripe_token(user, stripe_token, force=False):
              :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
     """
     try:
-        stripe_user_id = pooldlib.payment.exchange_stripe_token_for_user(stripe_token, user)
-        previous_association = hasattr(user, 'stripe_user_id') and user.stripe_user_id != stripe_user_id
+        stripe_customer = StripeCustomer(app_key=stripe_key)
+        stripe_customer_id = stripe_customer.token_for_customer(stripe_token, user)
+        previous_association = hasattr(user, 'stripe_customer_id') and user.stripe_customer_id != stripe_customer_id
         if previous_association and not force:
-            msg = 'User has a previously associated stripe user id and force was not set to True.'
+            msg = 'User has a previously associated stripe customer id and force was not set to True.'
             raise PreviousStripeAssociationError(msg)
     except (StripeAuthenticationError, StripeInvalidRequestError):
         # Errors caused by us
@@ -146,7 +149,66 @@ def associate_stripe_token(user, stripe_token, force=False):
         # Errors caused by trucks getting caught in the tubes
         msg = 'An error occurred while connecting to the Stripe API.'
         raise ExternalAPIUnavailableError(msg)
-    update(user, stripe_user_id=stripe_user_id)
+    update(user, stripe_customer_id=stripe_customer_id)
+
+
+def associate_stripe_authorization_code(user, auth_code, stripe_key, force=False):
+    """Exchange a Stripe Connect authorization code for stripe Connect user
+    data. The user's stripe user_id, publishable_key, access_token, and the granted
+    scope for the access_token will be stored in the user's profile with the following
+    keys: stripe_user_id, stripe_user_token, stripe_user_public_key, strip_user_grant_scope.
+    If the user is already associated with a different Stripe Connect user id an exception
+    will be raised unless ``force=True``, in which all keys will be updated to values returned
+    by the stripe connect api.
+
+    The value of ``user.stripe_user_token`` *must* be used as the stripe API key when executing
+    transactions on behalf of this user.
+
+    Stripe Connect User: A user who is utilizing stripe to receive payments *from* our system.
+
+    :param user: User for which to associate the retrieved Strip user id.
+    :type user: :class:`pooldlib.postgresql.models.User`
+    :param stripe_token: The single use token returned by Stripe, usually in
+                         response to a credit card authorization via stripe.js
+    :type stripe_token: string
+    :param force: If the target user is allready associated with a different
+                  Strip user id, do not raise
+                  ``PreviousStripeAssociationError`` and update the existing
+                  record.
+    :type force: boolean
+
+    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
+             :class:`pooldlib.exceptions.ExternalAPIUsageError`
+             :class:`pooldlib.exceptions.ExternalAPIError`
+             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
+    """
+    try:
+        stripe_user = StripeUser(app_key=stripe_key)
+        # Keys in user_data: public_key, access_token, scope, user_id
+        user_data = stripe_user.process_authorization_code(auth_code, user)
+
+        previous_association = hasattr(user, 'stripe_user_id') and user.stripe_user_id != user_data['user_id']
+        if previous_association and not force:
+            msg = 'User has a previously associated stripe user account and force was not set to True.'
+            raise PreviousStripeAssociationError(msg)
+    except (StripeAuthenticationError, StripeInvalidRequestError):
+        # Errors caused by us
+        msg = 'An error occurred in pooldlib while associating Stripe Connect account with user'
+        raise ExternalAPIUsageError(msg)
+    except StripeAPIError:
+        # Errors caused by stripe
+        msg = 'An error occurred with Stripe while associating Stripe Connect account with user'
+        raise ExternalAPIError(msg)
+    except StripeAPIConnectionError:
+        # Errors caused by trucks getting caught in the tubes
+        msg = 'An error occurred while connecting to the Stripe Connect API.'
+        raise ExternalAPIUnavailableError(msg)
+
+    update(user,
+           stripe_user_id=user_data['user_id'],
+           stripe_user_token=user_data['access_token'],
+           stripe_user_public_key=user_data['public_key'],
+           stripe_user_grant_scope=user_data['scope'])
 
 
 def connections(user, as_organizer=True):
