@@ -1,7 +1,7 @@
 # Magical make incantations...
 .DEFAULT_GOAL := dev
 .PHONY: clean clean-py dev docs docs-clean docs-open install \
-	    tests tests-tag tests-external tests-stripe \
+	    tests tests-all tests-tag tests-external tests-stripe \
 		upload upload-dev upload-nightly upload-release shell ipy bpy
 
 REV=$(shell git rev-parse --short HEAD)
@@ -41,16 +41,20 @@ docs-open:
 install:
 	@python setup.py install
 
-tests-tag:
-	@nosetests -vx -a '${TEST_ARGS}' || true
 tests:
 	@nosetests -vx -a '!external' ${TEST_ARGS} || true
+
+tests-all:
+	@nosetests -vx ${TEST_ARGS} || true
 
 tests-external:
 	@nosetests -vx -a 'external' ${TEST_ARGS} || true
 
 tests-stripe:
 	@nosetests -vx -a 'stripe' ${TEST_ARGS} || true
+
+tests-tag:
+	@nosetests -vx -a '${TEST_ARGS}' || true
 
 upload: upload-dev
 
