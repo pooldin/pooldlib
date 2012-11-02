@@ -239,7 +239,7 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
         assert_equal(1, len(ldgr))
         ldgr = ldgr[0]
         assert_equal(Decimal('25.0000'), ldgr.credit)
-        assert_equal('test-party', ldgr.party)
+        assert_equal('test-party', ldgr.processor)
 
         assert_equal(Decimal('75.0000'), self.user_a_balance.amount)
 
