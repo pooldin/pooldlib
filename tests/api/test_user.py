@@ -441,7 +441,7 @@ class TestValidatePassword(PooldLibPostgresBaseTest):
 
 
 class TestAssociateStripeTokenFailure(PooldLibPostgresBaseTest):
-    # These are functional test which depends on the stripe api.
+    # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
     EXP_FAIL_CARD_NUMBER = 4000000000000069
@@ -786,7 +786,7 @@ class TestAssociateStripeAuthorizationCode(PooldLibPostgresBaseTest):
 
 
 class TestPaymentToCommunity(PooldLibPostgresBaseTest):
-    # These are functional test which depends on the stripe api.
+    # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
     # NOTE :: this test depends on the following environment variables
@@ -948,7 +948,7 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
 
 
 class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
-    # These are functional test which depends on the stripe api.
+    # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
     # NOTE :: this test depends on the following environment variables
@@ -1131,7 +1131,7 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
 
 
 class TestFailedPaymentToCommunity(PooldLibPostgresBaseTest):
-    # These are functional test which depends on the stripe api.
+    # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
     FAIL_CARD_NUMBER = 4000000000000341
