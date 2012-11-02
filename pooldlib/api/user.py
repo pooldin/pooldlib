@@ -6,6 +6,7 @@ pooldlib.api.user
 
 """
 import re
+from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError as SQLAlchemyIntegrityError
 from sqlalchemy.orm.attributes import manager_of_class
@@ -13,18 +14,27 @@ from sqlalchemy.orm.attributes import manager_of_class
 from stripe import (AuthenticationError as StripeAuthenticationError,
                     InvalidRequestError as StripeInvalidRequestError,
                     APIError as StripeAPIError,
-                    APIConnectionError as StripeAPIConnectionError)
+                    APIConnectionError as StripeAPIConnectionError,
+                    CardError as StripeCardError)
 
 import pooldlib.log
-from pooldlib.payment import StripeCustomer, StripeUser
+from pooldlib.payment import (StripeCustomer,
+                              StripeUser,
+                              QUANTIZE_CENTS,
+                              total_after_fees as payment_total_after_fees)
+from pooldlib.api.community import organizer as get_community_organizer
 from pooldlib.generators import alphanumeric_string
 from pooldlib.exceptions import (InvalidPasswordError,
                                  EmailUnavailableError,
                                  UsernameUnavailableError,
+                                 StripeCustomerAccountError,
+                                 StripeUserAccountError,
+                                 CommunityConfigurationError,
                                  PreviousStripeAssociationError,
                                  ExternalAPIUsageError,
                                  ExternalAPIError,
-                                 ExternalAPIUnavailableError)
+                                 ExternalAPIUnavailableError,
+                                 UserCreditCardDeclinedError)
 from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (User as UserModel,
@@ -103,112 +113,6 @@ def get_balance(user, currency):
                     :class:`pooldlib.postgresql.models.Currency`
     """
     raise NotImplementedError()
-
-
-def associate_stripe_token(user, stripe_token, stripe_key, force=False):
-    """Exchange a Stripe one-time use token for a customer id in Stripe's
-    system. The poold user's stripe customer id will be stored as UserMeta data and
-    accessible via ``User.stripe_customer_id``.  If the user is already
-    associated with a different Stripe customer id an exception will be raised
-    unless ``force=True``.
-
-    Stripe Customer: A user who is utilizing stripe to pay *into* our system.
-
-    :param user: User for which to associate the retrieved Strip user id.
-    :type user: :class:`pooldlib.postgresql.models.User`
-    :param stripe_token: The single use token returned by Stripe, usually in
-                         response to a credit card authorization via stripe.js
-    :type stripe_token: string
-    :param force: If the target user is allready associated with a different
-                  Strip user id, do not raise
-                  ``PreviousStripeAssociationError`` and update the existing
-                  record.
-    :type force: boolean
-
-    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
-             :class:`pooldlib.exceptions.ExternalAPIUsageError`
-             :class:`pooldlib.exceptions.ExternalAPIError`
-             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
-    """
-    try:
-        stripe_customer = StripeCustomer(app_key=stripe_key)
-        stripe_customer_id = stripe_customer.token_for_customer(stripe_token, user)
-        previous_association = hasattr(user, 'stripe_customer_id') and user.stripe_customer_id != stripe_customer_id
-        if previous_association and not force:
-            msg = 'User has a previously associated stripe customer id and force was not set to True.'
-            raise PreviousStripeAssociationError(msg)
-    except (StripeAuthenticationError, StripeInvalidRequestError):
-        # Errors caused by us
-        msg = 'An error occurred in pooldlib while exchanging one time use token for Stripe user'
-        raise ExternalAPIUsageError(msg)
-    except StripeAPIError:
-        # Errors caused by stripe
-        msg = 'An error occurred with Stripe while exchanging one time use token for Stripe user'
-        raise ExternalAPIError(msg)
-    except StripeAPIConnectionError:
-        # Errors caused by trucks getting caught in the tubes
-        msg = 'An error occurred while connecting to the Stripe API.'
-        raise ExternalAPIUnavailableError(msg)
-    update(user, stripe_customer_id=stripe_customer_id)
-
-
-def associate_stripe_authorization_code(user, auth_code, stripe_key, force=False):
-    """Exchange a Stripe Connect authorization code for stripe Connect user
-    data. The user's stripe user_id, publishable_key, access_token, and the granted
-    scope for the access_token will be stored in the user's profile with the following
-    keys: stripe_user_id, stripe_user_token, stripe_user_public_key, strip_user_grant_scope.
-    If the user is already associated with a different Stripe Connect user id an exception
-    will be raised unless ``force=True``, in which all keys will be updated to values returned
-    by the stripe connect api.
-
-    The value of ``user.stripe_user_token`` *must* be used as the stripe API key when executing
-    transactions on behalf of this user.
-
-    Stripe Connect User: A user who is utilizing stripe to receive payments *from* our system.
-
-    :param user: User for which to associate the retrieved Strip user id.
-    :type user: :class:`pooldlib.postgresql.models.User`
-    :param stripe_token: The single use token returned by Stripe, usually in
-                         response to a credit card authorization via stripe.js
-    :type stripe_token: string
-    :param force: If the target user is allready associated with a different
-                  Strip user id, do not raise
-                  ``PreviousStripeAssociationError`` and update the existing
-                  record.
-    :type force: boolean
-
-    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
-             :class:`pooldlib.exceptions.ExternalAPIUsageError`
-             :class:`pooldlib.exceptions.ExternalAPIError`
-             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
-    """
-    try:
-        stripe_user = StripeUser(app_key=stripe_key)
-        # Keys in user_data: public_key, access_token, scope, user_id
-        user_data = stripe_user.process_authorization_code(auth_code, user)
-
-        previous_association = hasattr(user, 'stripe_user_id') and user.stripe_user_id != user_data['user_id']
-        if previous_association and not force:
-            msg = 'User has a previously associated stripe user account and force was not set to True.'
-            raise PreviousStripeAssociationError(msg)
-    except (StripeAuthenticationError, StripeInvalidRequestError):
-        # Errors caused by us
-        msg = 'An error occurred in pooldlib while associating Stripe Connect account with user'
-        raise ExternalAPIUsageError(msg)
-    except StripeAPIError:
-        # Errors caused by stripe
-        msg = 'An error occurred with Stripe while associating Stripe Connect account with user'
-        raise ExternalAPIError(msg)
-    except StripeAPIConnectionError:
-        # Errors caused by trucks getting caught in the tubes
-        msg = 'An error occurred while connecting to the Stripe Connect API.'
-        raise ExternalAPIUnavailableError(msg)
-
-    update(user,
-           stripe_user_id=user_data['user_id'],
-           stripe_user_token=user_data['access_token'],
-           stripe_user_public_key=user_data['public_key'],
-           stripe_user_grant_scope=user_data['scope'])
 
 
 def connections(user, as_organizer=True):
@@ -554,3 +458,265 @@ def email_exists(email, user=None):
     if ret and user is not None:
         return ret[0] != user.id
     return ret is not None
+
+
+###############################
+## Third Party Integration Code
+def associate_stripe_token(user, stripe_token, stripe_key, force=False):
+    """Exchange a Stripe one-time use token for a customer id in Stripe's
+    system. The poold user's stripe customer id will be stored as UserMeta data and
+    accessible via ``User.stripe_customer_id``.  If the user is already
+    associated with a different Stripe customer id an exception will be raised
+    unless ``force=True``.
+
+    Stripe Customer: A user who is utilizing stripe to pay *into* our system.
+
+    :param user: User for which to associate the retrieved Strip user id.
+    :type user: :class:`pooldlib.postgresql.models.User`
+    :param stripe_token: The single use token returned by Stripe, usually in
+                         response to a credit card authorization via stripe.js
+    :type stripe_token: string
+    :param force: If the target user is allready associated with a different
+                  Strip user id, do not raise
+                  ``PreviousStripeAssociationError`` and update the existing
+                  record.
+    :type force: boolean
+
+    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
+             :class:`pooldlib.exceptions.ExternalAPIUsageError`
+             :class:`pooldlib.exceptions.ExternalAPIError`
+             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
+    """
+    try:
+        stripe_customer = StripeCustomer(stripe_key)
+        stripe_customer_id = stripe_customer.token_for_customer(stripe_token, user)
+        previous_association = hasattr(user, 'stripe_customer_id') and user.stripe_customer_id != stripe_customer_id
+        if previous_association and not force:
+            msg = 'User has a previously associated stripe customer id and force was not set to True.'
+            raise PreviousStripeAssociationError(msg)
+    except StripeCardError:
+        # Errors caused by us
+        msg = 'The user\'s credit card was declined.'
+        raise UserCreditCardDeclinedError(msg)
+    except (StripeAuthenticationError, StripeInvalidRequestError):
+        # Errors caused by us
+        msg = 'An error occurred in pooldlib while exchanging one time use token for Stripe user'
+        raise ExternalAPIUsageError(msg)
+    except StripeAPIError:
+        # Errors caused by stripe
+        msg = 'An error occurred with Stripe while exchanging one time use token for Stripe user'
+        raise ExternalAPIError(msg)
+    except StripeAPIConnectionError:
+        # Errors caused by trucks getting caught in the tubes
+        msg = 'An error occurred while connecting to the Stripe API.'
+        raise ExternalAPIUnavailableError(msg)
+    update(user, stripe_customer_id=stripe_customer_id)
+
+
+def associate_stripe_authorization_code(user, auth_code, stripe_key, force=False):
+    """Exchange a Stripe Connect authorization code for stripe Connect user
+    data. The user's stripe user_id, publishable_key, access_token, and the granted
+    scope for the access_token will be stored in the user's profile with the following
+    keys: stripe_user_id, stripe_user_token, stripe_user_public_key, strip_user_grant_scope.
+    If the user is already associated with a different Stripe Connect user id an exception
+    will be raised unless ``force=True``, in which all keys will be updated to values returned
+    by the stripe connect api.
+
+    The value of ``user.stripe_user_token`` *must* be used as the stripe API key when executing
+    transactions on behalf of this user.
+
+    Stripe Connect User: A user who is utilizing stripe to receive payments *from* our system.
+
+    :param user: User for which to associate the retrieved Strip user id.
+    :type user: :class:`pooldlib.postgresql.models.User`
+    :param stripe_token: The single use token returned by Stripe, usually in
+                         response to a credit card authorization via stripe.js
+    :type stripe_token: string
+    :param force: If the target user is allready associated with a different
+                  Strip user id, do not raise
+                  ``PreviousStripeAssociationError`` and update the existing
+                  record.
+    :type force: boolean
+
+    :raises: :class:`pooldlib.exceptions.PreviousStripeAssociationError`
+             :class:`pooldlib.exceptions.ExternalAPIUsageError`
+             :class:`pooldlib.exceptions.ExternalAPIError`
+             :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
+    """
+    try:
+        stripe_user = StripeUser(app_key=stripe_key)
+        # Keys in user_data: public_key, access_token, scope, user_id
+        user_data = stripe_user.process_authorization_code(auth_code, user)
+
+        previous_association = hasattr(user, 'stripe_user_id') and user.stripe_user_id != user_data['user_id']
+        if previous_association and not force:
+            msg = 'User has a previously associated stripe user account and force was not set to True.'
+            raise PreviousStripeAssociationError(msg)
+    except (StripeAuthenticationError, StripeInvalidRequestError):
+        # Errors caused by us
+        msg = 'An error occurred in pooldlib while associating Stripe Connect account with user'
+        raise ExternalAPIUsageError(msg)
+    except StripeAPIError:
+        # Errors caused by stripe
+        msg = 'An error occurred with Stripe while associating Stripe Connect account with user'
+        raise ExternalAPIError(msg)
+    except StripeAPIConnectionError:
+        # Errors caused by trucks getting caught in the tubes
+        msg = 'An error occurred while connecting to the Stripe Connect API.'
+        raise ExternalAPIUnavailableError(msg)
+
+    update(user,
+           stripe_user_id=user_data['user_id'],
+           stripe_user_token=user_data['access_token'],
+           stripe_user_public_key=user_data['public_key'],
+           stripe_user_grant_scope=user_data['scope'])
+
+
+def payment_to_community(user, community, amount, currency, fees, note=None, transact_ledger=None):
+    """Use this function to make a payment to the 'organizer' of 'community'.
+    While we are actively not holding money, this method should be used for any
+    and all money related transactions in which funds are being directed to a
+    community. Records will be written to all appropriate ledger tables, and the
+    transaction executed with stripe.
+
+    :raises: :class:`pooldlib.exception.StripeCustomerAccountError`
+             :class:`pooldlib.exception.StripeUserAccountError`
+             :class:`pooldlib.exception.CommunityConfigurationError`
+    """
+    from pooldlib.api import Transact
+    transact_ledger = transact_ledger or Transact()
+
+    if user.stripe_customer_id is None:
+        msg = 'User does not have an associated Stripe customer account!'
+        data = dict(user=str(user))
+        logger.error(msg, data=data)
+        raise StripeCustomerAccountError(msg)
+
+    organizer = get_community_organizer(community)
+    if organizer is None:
+        msg = 'No organizer was found for community!'
+        data = dict(community=str(community))
+        logger.critical(msg, data=data)
+        raise CommunityConfigurationError(msg)
+    if organizer.stripe_user_id is None or organizer.stripe_user_token is None:
+        msg = 'User does not have an associated Stripe user account, need to complete this transaction!'
+        data = dict(user=str(user))
+        logger.error(msg, data=data)
+        raise StripeUserAccountError(msg)
+
+    txn_dict, amount_cents, fee_cents = _calculate_transaction_amounts(amount, fees)
+
+    description = 'User: %s, paying towards community: %s.' % (user.id, community.id)
+    if note is not None:
+        description += ' %s' % note
+
+    ret = _execute_charge(organizer.stripe_user_token, amount_cents, fee_cents, currency, user, description)
+
+    msg = 'Transaction successfully completed.'
+    data = dict(sub_total=amount,
+                currency=currency.code,
+                total=txn_dict['charge']['final'])
+    meta = dict(stripe_response=ret)
+    logger.transaction(msg, data=data, **meta)
+
+    stripe_ref_number = ret['id']
+    # Transaction for ``user`` with credit=``amount``
+    transact_ledger.transaction(user,
+                                'stripe',
+                                stripe_ref_number,
+                                currency,
+                                credit=amount,
+                                fee=None)
+    # External Ledger for ``user`` for ``credit=final_charge_amount``
+    transact_ledger.external_ledger(user,
+                                    'stripe',
+                                    stripe_ref_number,
+                                    currency,
+                                    credit=txn_dict['charge']['final'])
+    for fee in fees:
+        fee_amount = [f['fee'] for f in txn_dict['fees'] if f['name'] == fee.name][0]
+        # Transaction for ``fee.user`` for ``credit=fee_amount``
+        transact_ledger.transaction(fee.user,
+                                    fee.name,
+                                    stripe_ref_number,
+                                    currency,
+                                    credit=fee_amount,
+                                    fee=fee)
+        # External Ledger for ``user`` for ``debit=fee_amount``
+        transact_ledger.external_ledger(user,
+                                        fee.name,
+                                        stripe_ref_number,
+                                        currency,
+                                        debit=fee_amount,
+                                        fee=fee)
+    transact_ledger.transfer(amount,
+                             currency,
+                             origin=user,
+                             destination=community)
+    transact_ledger.transfer(amount,
+                             currency,
+                             origin=community,
+                             destination=organizer)
+    transact_ledger.transaction(organizer,
+                                'stripe',
+                                stripe_ref_number,
+                                currency,
+                                debit=amount)
+    # External Ledger for ``user`` for ``debit=fee_amount``
+    transact_ledger.external_ledger(organizer,
+                                    'stripe',
+                                    stripe_ref_number,
+                                    currency,
+                                    debit=amount)
+    transact_ledger.execute()
+    return transact_ledger.id
+
+
+def payment_to_community_goal(user, community, amount):
+    """
+    """
+    from pooldlib.api import Transact
+
+
+def _convert_dollars_to_cents(amount):
+    amount_cents = amount * Decimal(100)
+    amount_cents = amount_cents.quantize(QUANTIZE_CENTS)
+    return int(amount_cents)
+
+
+def _calculate_transaction_amounts(amount, fees):
+    txn_dict = payment_total_after_fees(amount, fees=fees)
+    non_stripe_fees = [fee for fee in txn_dict['fees'] if fee['name'] != 'stripe-transaction']
+    fee_cents = Decimal(0)
+    for fee in non_stripe_fees:
+        fee_cents += _convert_dollars_to_cents(fee['fee'])
+    amount_cents = _convert_dollars_to_cents(txn_dict['charge']['final'])
+
+    return txn_dict, amount_cents, fee_cents
+
+
+def _execute_charge(api_key, amount_cents, fee_cents, currency, user, description):
+    client = StripeCustomer(api_key)
+    try:
+        ret = client.charge(amount_cents,
+                            fee_cents,
+                            currency,
+                            user,
+                            description)
+    except StripeCardError:
+        # Errors caused by us
+        msg = 'The user\'s credit card was declined.'
+        raise UserCreditCardDeclinedError(msg)
+    except (StripeAuthenticationError, StripeInvalidRequestError):
+        # Errors caused by us
+        msg = 'An error occurred in pooldlib while associating Stripe Connect account with user'
+        raise ExternalAPIUsageError(msg)
+    except StripeAPIError:
+        # Errors caused by stripe
+        msg = 'An error occurred with Stripe while associating Stripe Connect account with user'
+        raise ExternalAPIError(msg)
+    except StripeAPIConnectionError:
+        # Errors caused by trucks getting caught in the tubes
+        msg = 'An error occurred while connecting to the Stripe Connect API.'
+        raise ExternalAPIUnavailableError(msg)
+    return ret
