@@ -27,8 +27,8 @@ from pooldlib.postgresql import (User as UserModel,
                                  Currency as CurrencyModel,
                                  ExternalLedger as ExternalLedgerModel,
                                  Transaction as TransactionModel,
+                                 CommunityGoalLedger as CommunityGoalLedgerModel,
                                  Balance as BalanceModel)
-
 from tests import tag
 from tests.base import PooldLibPostgresBaseTest
 
@@ -904,6 +904,189 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
                                             amount,
                                             self.currency,
                                             fees=(self.stripe_fee, self.poold_fee))
+        user_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                         .filter_by(balance_id=self.user_balance.id)\
+                                         .first()
+        user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
+                                              .filter_by(party='stripe')\
+                                              .all()
+        assert_equal(Decimal('100.0000'), user_txn.credit)
+        assert_true(user_txn.debit is None)
+        for user_ldgr in user_ldgrs:
+            if user_ldgr.debit is None:
+                assert_equal(Decimal('106.3900'), user_ldgr.credit)
+            if user_ldgr.credit is None:
+                assert_equal(Decimal('100.0000'), user_ldgr.debit)
+
+        org_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                        .filter_by(balance_id=self.organizer_balance.id)\
+                                        .first()
+        assert_equal(Decimal('100.0000'), org_txn.debit)
+        assert_true(org_txn.credit is None)
+
+        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                           .filter_by(balance_id=self.stripe_balance.id)\
+                                           .first()
+        stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
+                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .first()
+        assert_equal(Decimal('3.3900'), stripe_txn.credit)
+        assert_true(stripe_txn.debit is None)
+        assert_equal(Decimal('3.3900'), stripe_ldgr.debit)
+        assert_true(stripe_ldgr.credit is None)
+
+        poold_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                          .filter_by(balance_id=self.poold_balance.id)\
+                                          .first()
+        poold_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
+                                              .filter_by(party=self.poold_balance.user.username)\
+                                              .first()
+        assert_equal(Decimal('3.0000'), poold_txn.credit)
+        assert_true(poold_txn.debit is None)
+        assert_equal(Decimal('3.0000'), poold_ldgr.debit)
+        assert_true(poold_ldgr.credit is None)
+
+
+class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
+    # These are functional test which depends on the stripe api.
+    # To run all stripe api related tests run: $ make tests-stripe
+    # To run all tests which utilize external services run: $ make
+    # NOTE :: this test depends on the following environment variables
+    # NOTE :: being defined: TEST_CARD_VISA_NUMBER, TEST_CARD_VISA_CVC, STRIPE_SECRET_KEY
+    TEST_CARD_VISA_NUMBER = 4242424242424242
+    TEST_CARD_VISA_CVC = 123
+
+    def setUp(self):
+        super(TestPaymentToCommunityGoal, self).setUp()
+
+        try:
+            config_path = os.path.join(os.path.dirname(DIR), '.env')
+            config.update_with_file(config_path)
+        except:
+            pass
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.user = self.create_user(username, name, email=email)
+        self.user_balance = self.create_balance(user=self.user, currency_code='USD', amount=Decimal(0))
+
+        exp = datetime.now() + timedelta(days=365)
+        stripe_customer_id = _create_stripe_customer_for_card(self.TEST_CARD_VISA_NUMBER,
+                                                              self.TEST_CARD_VISA_CVC,
+                                                              exp.month,
+                                                              exp.year,
+                                                              self.user)
+
+        self.create_user_meta(self.user, stripe_customer_id=stripe_customer_id)
+
+        n = uuid().hex
+        username = 'StripeUser-%s' % n[:16]
+        name = 'StripeUser %s' % n[16:]
+        email = 'StripeUser-%s@example.com' % n[16:]
+        self.organizer = self.create_user(username, name, email=email)
+        self.organizer_balance = self.create_balance(user=self.organizer, currency_code='USD', amount=Decimal(0))
+        self.create_user_meta(self.organizer, stripe_user_id=uuid().hex)
+        self.create_user_meta(self.organizer, stripe_user_token=config.STRIPE_CONNECT_AUTH_TOKEN)
+
+        self.com_name = 'Test Stripe Payment Community'
+        self.com_description = 'To Test Stripe Payment Community'
+        self.community = self.create_community(self.com_name, self.com_description)
+        self.community_balance = self.create_balance(community=self.community, currency_code='USD', amount=Decimal(0))
+        self.community_goal = self.create_community_goal(self.community,
+                                                         self.com_name + ' Goal',
+                                                         self.com_description + ' Goal')
+
+        self.stripe_fee = FeeModel.query.filter_by(name='stripe-transaction').first()
+        self.poold_fee = FeeModel.query.filter_by(name='poold-transaction').first()
+        self.currency = CurrencyModel.query.filter_by(code='USD').first()
+
+        self.stripe_balance = BalanceModel.query.join(CurrencyModel)\
+                                                .filter(CurrencyModel.code == 'USD')\
+                                                .join(UserModel)\
+                                                .filter(UserModel.username == 'stripe-transaction')\
+                                                .first()
+        self.poold_balance = BalanceModel.query.join(CurrencyModel)\
+                                               .filter(CurrencyModel.code == 'USD')\
+                                               .join(UserModel)\
+                                               .filter(UserModel.username == 'poold-transaction')\
+                                               .first()
+
+    @tag('external', 'stripe')
+    @patch('pooldlib.api.user.get_community_organizer')
+    def test_simple_payment(self, mock_get_organizer):
+        mock_get_organizer.return_value = self.organizer
+        amount = Decimal('100')
+
+        ldgr_id = user.payment_to_community(self.user,
+                                            self.community,
+                                            amount,
+                                            self.currency,
+                                            goal=self.community_goal,
+                                            fees=(self.stripe_fee,))
+
+        user_goal_deposit = CommunityGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
+        assert_equal(Decimal('100.0000'), user_goal_deposit.credit)
+        assert_true(user_goal_deposit.debit is None)
+        org_goal_withdrawal = CommunityGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
+        assert_equal(Decimal('100.0000'), org_goal_withdrawal.debit)
+        assert_true(org_goal_withdrawal.credit is None)
+
+        user_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                         .filter_by(balance_id=self.user_balance.id)\
+                                         .first()
+        user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
+                                              .filter_by(party='stripe')\
+                                              .all()
+
+        assert_equal(Decimal('100.0000'), user_txn.credit)
+        assert_true(user_txn.debit is None)
+        for user_ldgr in user_ldgrs:
+            if user_ldgr.debit is None:
+                assert_equal(Decimal('103.3000'), user_ldgr.credit)
+            if user_ldgr.credit is None:
+                assert_equal(Decimal('100.0000'), user_ldgr.debit)
+
+        org_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                        .filter_by(balance_id=self.organizer_balance.id)\
+                                        .first()
+        assert_equal(Decimal('100.0000'), org_txn.debit)
+        assert_true(org_txn.credit is None)
+
+        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
+                                           .filter_by(balance_id=self.stripe_balance.id)\
+                                           .first()
+        stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
+                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .first()
+        assert_equal(Decimal('3.3000'), stripe_txn.credit)
+        assert_true(stripe_txn.debit is None)
+        assert_equal(Decimal('3.3000'), stripe_ldgr.debit)
+        assert_true(stripe_ldgr.credit is None)
+
+    @tag('external', 'stripe')
+    @patch('pooldlib.api.user.get_community_organizer')
+    def test_payment_multiple_fees(self, mock_get_organizer):
+        mock_get_organizer.return_value = self.organizer
+        m_currency = Mock()
+        m_currency.code = 'USD'
+        amount = Decimal('100')
+
+        ldgr_id = user.payment_to_community(self.user,
+                                            self.community,
+                                            amount,
+                                            self.currency,
+                                            goal=self.community_goal,
+                                            fees=(self.stripe_fee, self.poold_fee))
+
+        user_goal_deposit = CommunityGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
+        assert_equal(Decimal('100.0000'), user_goal_deposit.credit)
+        assert_true(user_goal_deposit.debit is None)
+        org_goal_withdrawal = CommunityGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
+        assert_equal(Decimal('100.0000'), org_goal_withdrawal.debit)
+        assert_true(org_goal_withdrawal.credit is None)
+
         user_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
                                          .filter_by(balance_id=self.user_balance.id)\
                                          .first()
