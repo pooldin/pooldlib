@@ -572,7 +572,7 @@ def associate_stripe_authorization_code(user, auth_code, stripe_key, force=False
            stripe_user_grant_scope=user_data['scope'])
 
 
-def payment_to_community(user, community, amount, currency, fees, note=None, transact_ledger=None):
+def payment_to_community(user, community, amount, currency, fees, note=None, goal=None):
     """Use this function to make a payment to the 'organizer' of 'community'.
     While we are actively not holding money, this method should be used for any
     and all money related transactions in which funds are being directed to a
@@ -584,7 +584,7 @@ def payment_to_community(user, community, amount, currency, fees, note=None, tra
              :class:`pooldlib.exception.CommunityConfigurationError`
     """
     from pooldlib.api import Transact
-    transact_ledger = transact_ledger or Transact()
+    transact_ledger = Transact()
 
     if user.stripe_customer_id is None:
         msg = 'User does not have an associated Stripe customer account!'
@@ -649,14 +649,26 @@ def payment_to_community(user, community, amount, currency, fees, note=None, tra
                                         currency,
                                         debit=fee_amount,
                                         fee=fee)
-    transact_ledger.transfer(amount,
-                             currency,
-                             origin=user,
-                             destination=community)
-    transact_ledger.transfer(amount,
-                             currency,
-                             origin=community,
-                             destination=organizer)
+
+    if not goal:
+        transact_ledger.transfer(amount,
+                                 currency,
+                                 origin=user,
+                                 destination=community)
+        transact_ledger.transfer(amount,
+                                 currency,
+                                 origin=community,
+                                 destination=organizer)
+    else:
+        transact_ledger.transfer_to_community_goal(amount,
+                                                   currency,
+                                                   goal,
+                                                   user)
+        transact_ledger.transfer_from_community_goal(amount,
+                                                     currency,
+                                                     goal,
+                                                     organizer)
+
     transact_ledger.transaction(organizer,
                                 'stripe',
                                 stripe_ref_number,
@@ -670,12 +682,6 @@ def payment_to_community(user, community, amount, currency, fees, note=None, tra
                                     debit=amount)
     transact_ledger.execute()
     return transact_ledger.id
-
-
-def payment_to_community_goal(user, community, amount):
-    """
-    """
-    from pooldlib.api import Transact
 
 
 def _convert_dollars_to_cents(amount):
