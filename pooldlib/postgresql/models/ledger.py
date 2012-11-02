@@ -9,14 +9,14 @@ class InternalLedger(common.LedgerModel):
     record_table = db.Column(db.Enum('transaction', 'exchange', 'transfer', name='record_table_enum'),
                              nullable=False,
                              index=True)
-    party = db.Column(db.String(64), nullable=False, index=True)
+    party = db.Column(db.String(64), nullable=True, index=True)
     currency_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('currency.id'),
                             nullable=False)
     currency = db.relationship('Currency', backref='internal_ledger_entries', lazy='select')
     fee_id = db.Column(db.BigInteger(unsigned=True),
                        db.ForeignKey('fee.id'),
-                       nullable=False)
+                       nullable=True)
     fee = db.relationship('Fee', backref='internal_ledger_entries', lazy='select')
 
 

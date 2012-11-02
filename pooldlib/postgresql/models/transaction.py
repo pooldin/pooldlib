@@ -11,6 +11,7 @@ class Transfer(common.LedgerModel):
 
 
 class Transaction(common.LedgerModel):
+    group_id = db.Column(UUID, unique=False, index=True)
     balance = db.relationship('Balance', backref='transactions', lazy='select')
     balance_id = db.Column(db.BigInteger(unsigned=True),
                            db.ForeignKey('balance.id'),
