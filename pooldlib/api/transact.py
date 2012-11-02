@@ -176,6 +176,17 @@ class Transact(object):
         elif debit is not None:
             self._transaction_debit(txn_balance, debit, fee=fee, party=external_party, reference=external_reference)
 
+    def external_ledger(self, balance_holder, party, reference, currency, debit=None, credit=None, fee=None):
+        balance = balance_holder.balance_for_currency(currency, for_update=True)
+        el = self._new_external_ledger(party,
+                                       balance.currency,
+                                       'transaction',
+                                       reference,
+                                       fee,
+                                       credit=credit,
+                                       debit=debit)
+        self._external_ledger_items.append(el)
+
     def verify(self):
         """Verify that there are no errors associated with the transact list.
 
@@ -256,15 +267,6 @@ class Transact(object):
         t.credit = t.credit or Decimal('0.0000')
         t.credit += amount
         balance.amount += amount
-
-        el = self._new_external_ledger(party,
-                                       balance.currency,
-                                       'transaction',
-                                       reference,
-                                       fee,
-                                       credit=amount)
-        self._external_ledger_items.append(el)
-
         self._transactions['credit'][balance.id] = t
 
     def _transaction_debit(self, balance, amount, fee=None, party=None, reference=None):
@@ -272,14 +274,6 @@ class Transact(object):
         t.debit = t.debit or Decimal('0.0000')
         t.debit += amount
         balance.amount -= amount
-
-        el = self._new_external_ledger(party,
-                                       balance.currency,
-                                       'transaction',
-                                       reference,
-                                       fee,
-                                       debit=amount)
-        self._external_ledger_items.append(el)
 
         if balance.amount < Decimal('0.0000'):
             msg = 'Transaction of %s failed, %s balance %s has insufficient funds (%s).'
@@ -297,6 +291,7 @@ class Transact(object):
     def _new_transaction(self, balance):
         t = TransactionModel()
         t.balance = balance
+        t.group_id = self.id
         return t
 
     def _new_internal_ledger(self, party, currency, record_table, fee, debit=None, credit=None):
