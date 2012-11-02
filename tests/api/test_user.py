@@ -863,7 +863,8 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
                                          .filter_by(balance_id=self.user_balance.id)\
                                          .first()
         user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party='stripe')\
+                                              .filter_by(processor='stripe')\
+                                              .filter_by(fee_id=None)\
                                               .all()
 
         assert_equal(Decimal('100.0000'), user_txn.credit)
@@ -880,14 +881,9 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
         assert_equal(Decimal('100.0000'), org_txn.debit)
         assert_true(org_txn.credit is None)
 
-        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                           .filter_by(balance_id=self.stripe_balance.id)\
-                                           .first()
         stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .filter_by(fee_id=self.stripe_fee.id)\
                                                .first()
-        assert_equal(Decimal('3.3000'), stripe_txn.credit)
-        assert_true(stripe_txn.debit is None)
         assert_equal(Decimal('3.3000'), stripe_ldgr.debit)
         assert_true(stripe_ldgr.credit is None)
 
@@ -908,7 +904,8 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
                                          .filter_by(balance_id=self.user_balance.id)\
                                          .first()
         user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party='stripe')\
+                                              .filter_by(processor='stripe')\
+                                              .filter_by(fee_id=None)\
                                               .all()
         assert_equal(Decimal('100.0000'), user_txn.credit)
         assert_true(user_txn.debit is None)
@@ -924,25 +921,15 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
         assert_equal(Decimal('100.0000'), org_txn.debit)
         assert_true(org_txn.credit is None)
 
-        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                           .filter_by(balance_id=self.stripe_balance.id)\
-                                           .first()
         stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .filter_by(fee_id=self.stripe_fee.id)\
                                                .first()
-        assert_equal(Decimal('3.3900'), stripe_txn.credit)
-        assert_true(stripe_txn.debit is None)
         assert_equal(Decimal('3.3900'), stripe_ldgr.debit)
         assert_true(stripe_ldgr.credit is None)
 
-        poold_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                          .filter_by(balance_id=self.poold_balance.id)\
-                                          .first()
         poold_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party=self.poold_balance.user.username)\
+                                              .filter_by(fee_id=self.poold_fee.id)\
                                               .first()
-        assert_equal(Decimal('3.0000'), poold_txn.credit)
-        assert_true(poold_txn.debit is None)
         assert_equal(Decimal('3.0000'), poold_ldgr.debit)
         assert_true(poold_ldgr.credit is None)
 
@@ -1037,7 +1024,8 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
                                          .filter_by(balance_id=self.user_balance.id)\
                                          .first()
         user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party='stripe')\
+                                              .filter_by(processor='stripe')\
+                                              .filter_by(fee_id=None)\
                                               .all()
 
         assert_equal(Decimal('100.0000'), user_txn.credit)
@@ -1054,14 +1042,9 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
         assert_equal(Decimal('100.0000'), org_txn.debit)
         assert_true(org_txn.credit is None)
 
-        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                           .filter_by(balance_id=self.stripe_balance.id)\
-                                           .first()
         stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .filter_by(fee_id=self.stripe_fee.id)\
                                                .first()
-        assert_equal(Decimal('3.3000'), stripe_txn.credit)
-        assert_true(stripe_txn.debit is None)
         assert_equal(Decimal('3.3000'), stripe_ldgr.debit)
         assert_true(stripe_ldgr.credit is None)
 
@@ -1091,7 +1074,8 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
                                          .filter_by(balance_id=self.user_balance.id)\
                                          .first()
         user_ldgrs = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party='stripe')\
+                                              .filter_by(processor='stripe')\
+                                              .filter_by(fee_id=None)\
                                               .all()
         assert_equal(Decimal('100.0000'), user_txn.credit)
         assert_true(user_txn.debit is None)
@@ -1107,25 +1091,15 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
         assert_equal(Decimal('100.0000'), org_txn.debit)
         assert_true(org_txn.credit is None)
 
-        stripe_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                           .filter_by(balance_id=self.stripe_balance.id)\
-                                           .first()
         stripe_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                               .filter_by(party=self.stripe_balance.user.username)\
+                                               .filter_by(fee_id=self.stripe_fee.id)\
                                                .first()
-        assert_equal(Decimal('3.3900'), stripe_txn.credit)
-        assert_true(stripe_txn.debit is None)
         assert_equal(Decimal('3.3900'), stripe_ldgr.debit)
         assert_true(stripe_ldgr.credit is None)
 
-        poold_txn = TransactionModel.query.filter_by(group_id=ldgr_id)\
-                                          .filter_by(balance_id=self.poold_balance.id)\
-                                          .first()
         poold_ldgr = ExternalLedgerModel.query.filter_by(record_id=ldgr_id)\
-                                              .filter_by(party=self.poold_balance.user.username)\
+                                              .filter_by(fee_id=self.poold_fee.id)\
                                               .first()
-        assert_equal(Decimal('3.0000'), poold_txn.credit)
-        assert_true(poold_txn.debit is None)
         assert_equal(Decimal('3.0000'), poold_ldgr.debit)
         assert_true(poold_ldgr.credit is None)
 

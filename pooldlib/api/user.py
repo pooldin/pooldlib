@@ -635,16 +635,9 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
                                     credit=txn_dict['charge']['final'])
     for fee in fees:
         fee_amount = [f['fee'] for f in txn_dict['fees'] if f['name'] == fee.name][0]
-        # Transaction for ``fee.user`` for ``credit=fee_amount``
-        transact_ledger.transaction(fee.user,
-                                    fee.name,
-                                    stripe_ref_number,
-                                    currency,
-                                    credit=fee_amount,
-                                    fee=fee)
         # External Ledger for ``user`` for ``debit=fee_amount``
         transact_ledger.external_ledger(user,
-                                        fee.name,
+                                        'stripe',
                                         stripe_ref_number,
                                         currency,
                                         debit=fee_amount,

@@ -172,16 +172,16 @@ class Transact(object):
         """
         txn_balance = balance_holder.balance_for_currency(currency, for_update=True)
         if credit is not None:
-            self._transaction_credit(txn_balance, credit, fee=fee, party=external_party, reference=external_reference)
+            self._transaction_credit(txn_balance, credit, fee=fee)
         elif debit is not None:
-            self._transaction_debit(txn_balance, debit, fee=fee, party=external_party, reference=external_reference)
+            self._transaction_debit(txn_balance, debit, fee=fee)
 
-    def external_ledger(self, balance_holder, party, reference, currency, debit=None, credit=None, fee=None):
+    def external_ledger(self, balance_holder, processor, reference_number, currency, debit=None, credit=None, fee=None):
         balance = balance_holder.balance_for_currency(currency, for_update=True)
-        el = self._new_external_ledger(party,
+        el = self._new_external_ledger(processor,
                                        balance.currency,
                                        'transaction',
-                                       reference,
+                                       reference_number,
                                        fee,
                                        credit=credit,
                                        debit=debit)
@@ -262,14 +262,14 @@ class Transact(object):
 
         self._transfers['debit'][balance.id] = t
 
-    def _transaction_credit(self, balance, amount, fee=None, party=None, reference=None):
+    def _transaction_credit(self, balance, amount, fee=None):
         t = self._transactions['credit'][balance.id] or self._new_transaction(balance)
         t.credit = t.credit or Decimal('0.0000')
         t.credit += amount
         balance.amount += amount
         self._transactions['credit'][balance.id] = t
 
-    def _transaction_debit(self, balance, amount, fee=None, party=None, reference=None):
+    def _transaction_debit(self, balance, amount, fee=None):
         t = self._transactions['debit'][balance.id] or self._new_transaction(balance)
         t.debit = t.debit or Decimal('0.0000')
         t.debit += amount
@@ -308,12 +308,12 @@ class Transact(object):
             il.debit = debit
         return il
 
-    def _new_external_ledger(self, party, currency, record_table, reference, fee, debit=None, credit=None):
+    def _new_external_ledger(self, processor, currency, record_table, reference_number, fee, debit=None, credit=None):
         el = ExternalLedgerModel()
         el.record_id = self.id
         el.record_table = record_table
-        el.external_reference_number = reference
-        el.party = party
+        el.reference_number = reference_number
+        el.processor = processor
         el.currency = currency
         el.fee = fee
 

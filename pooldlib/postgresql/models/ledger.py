@@ -27,8 +27,8 @@ class ExternalLedger(common.LedgerModel):
     record_table = db.Column(db.Enum('transaction', 'exchange', 'transfer', name='record_table_enum'),
                              nullable=False,
                              index=True)
-    party = db.Column(db.String(255), nullable=False, index=True)
-    external_reference_number = db.Column(db.String(255), nullable=False, index=True)
+    processor = db.Column(db.String(255), nullable=False, index=True)
+    reference_number = db.Column(db.String(255), nullable=False, index=True)
     currency_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('currency.id'),
                             nullable=False)
