@@ -1,13 +1,85 @@
 import json
+from decimal import Decimal
 
 import stripe
-from stripe import Customer as _Customer
+from stripe import (Charge as _Charge,
+                    Customer as _Customer,
+                    Token as _Token)
 
 import pooldlib.log
 
 logger = pooldlib.log.get_logger(None, logging_name=__name__)
 
 __all__ = ('StripeCustomer', 'StripeUser')
+
+# All charges to stripe must be exact down to the cent, so for now
+# We will limit ourselves to this decimal scale
+# By using charge_total.quantize(QUANTIZE_DOLLARS) we take care of rounding to
+# the nearest cent.
+QUANTIZE_DOLLARS = Decimal(10) ** -2
+QUANTIZE_CENTS = Decimal(10)
+
+
+def total_after_fees(amount, fees=None, is_payer=True):
+    """Calculate all fees related to a transaction of ``amount`` with associated
+    ``fees``. If ``fees`` includes a stripe-transaction fee, the transaction amount
+    will be adjusted to account for it.
+
+    :param amount: The decimal amount on which to base the transaction.
+    :type amount: decimal.Decimal
+    :param fees: A list of fees to associate with the transaction.
+    :type fees: list of :class:`pooldlib.postgresql.models.Fee`
+    :param is_payer: Indicates whether or not the fees are calculated from
+                     the point of view of the payer or payee (payer fees are
+                     additive to the total amount, payee fees are decremental).
+    :type is_payer: boolean
+
+    :raises: TypeError
+             :class:`pooldlib.exception.UnknownFeeError`
+
+    :returns: dictionary, structure: {'charge': { 'initial': the passed in fee amount: Decimal,
+                                                  'final': The total charge after fees are applied: Decimal},
+                                      'fees': [{'name': First fee name,
+                                                'fee': The calculated fee amount}
+                                               ...]}
+    """
+    if not isinstance(fees, (tuple, list)):
+        msg = 'fees must be of type list or tuple'
+        raise TypeError(msg)
+    if not isinstance(amount, Decimal):
+        msg = 'Transaction amount must be of type decimal.Decimal.'
+        raise TypeError(msg)
+
+    stripe_fee = [f for f in fees if f.name == 'stripe-transaction']
+    stripe_fee = stripe_fee[0] if stripe_fee else None
+    other_fees = [f for f in fees if f.name != 'stripe-transaction']
+
+    ledger = {'charge': {'initial': amount, },
+              'fees': list()}
+
+    charge_amount = amount
+    multiplier = 1 if is_payer else -1
+    for other_fee in other_fees:
+        fee_total = other_fee.flat + other_fee.fractional_pct * amount
+        fee_total = fee_total
+        charge_amount += multiplier * fee_total
+        entry = {'name': other_fee.name,
+                 'id': other_fee.id,
+                 'fee': fee_total.quantize(QUANTIZE_DOLLARS)}
+        ledger['fees'].append(entry)
+
+    if stripe_fee is not None:
+        # Percentages are stored as percentages in the db, convert it to a decimal
+        new_charge_amount = (stripe_fee.flat + charge_amount) / (Decimal('1.0000') - stripe_fee.fractional_pct)
+        stripe_fee_amount = new_charge_amount - charge_amount
+        entry = {'name': stripe_fee.name,
+                 'id': stripe_fee.id,
+                 'fee': stripe_fee_amount.quantize(QUANTIZE_DOLLARS)}
+        ledger['fees'].append(entry)
+        charge_amount = new_charge_amount
+
+    ledger['charge']['final'] = charge_amount.quantize(QUANTIZE_DOLLARS)
+    return ledger
 
 
 class _StripeObject(object):
@@ -32,6 +104,11 @@ class _StripeObject(object):
         elif isinstance(error, stripe.APIConnectionError):
             # A connection error prevented us from creating the user
             msg = 'There was an error connecting to the Stripe API.'
+            logger.error(msg, data=data, **meta)
+        elif isinstance(error, stripe.CardError):
+            # A problem with a customer's card prevented us from processing a
+            # transaction
+            msg = 'A transaction failed due to issues with the users credit card.'
             logger.error(msg, data=data, **meta)
         elif isinstance(error, stripe.APIError):
             # Something unknown went wrong with the api exchanging the token
@@ -89,6 +166,19 @@ class StripeCustomer(_StripeObject):
             raise
 
         return stripe_user.id
+
+    def charge(self, charge_amount, app_fee, currency, user, charge_description):
+        cust_token = _Token.create(customer=user.stripe_customer_id, api_key=self.api_key)
+        kwargs = dict(amount=charge_amount,
+                      application_fee=app_fee,
+                      card=cust_token.id,
+                      currency=currency.code,
+                      description=charge_description)
+        try:
+            charge = _Charge.create(api_key=self.api_key, **kwargs)
+        except stripe.StripeError, e:
+            self._handle_error(e, user, kwargs)
+        return charge
 
 
 class StripeUser(_StripeObject):
