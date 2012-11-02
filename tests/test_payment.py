@@ -1,4 +1,5 @@
 import os
+from decimal import Decimal
 from datetime import datetime, timedelta
 from uuid import uuid4 as uuid
 
@@ -12,6 +13,68 @@ from pooldlib.postgresql.models import (Currency as CurrencyModel,
 
 from tests import tag
 from tests.base import PooldLibPostgresBaseTest
+
+
+class TestTotalAfterFees(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestTotalAfterFees, self).setUp()
+
+        self.stripe_fee = FeeModel.query.filter_by(name='stripe-transaction').first()
+        self.poold_fee = FeeModel.query.filter_by(name='poold-transaction').first()
+
+    @tag('payment')
+    def test_single_non_stripe_fee(self):
+        charge = Decimal('100.0000')
+        # fractional pct = 0.03
+        # flat fee = 0.00
+        poold_fee = Decimal('3.0000')
+        fees = {'poold-transaction': poold_fee}
+        total = Decimal('103.0000')
+
+        ret = payment.total_after_fees(charge,
+                                       fees=(self.poold_fee, ))
+        assert_equal(charge, ret['charge']['initial'])
+        assert_equal(total, ret['charge']['final'])
+        for fee in ret['fees']:
+            assert_equal(fees[fee['name']], fee['fee'])
+
+    @tag('payment')
+    def test_single_stripe_fee(self):
+        charge = Decimal('100.0000')
+        # fractional pct = 0.03
+        # flat fee = 0.00
+        stripe_fee = Decimal('3.3000')
+        fees = {'stripe-transaction': stripe_fee}
+        total = Decimal('103.3000')
+
+        ret = payment.total_after_fees(charge,
+                                       fees=(self.stripe_fee, ))
+        assert_equal(charge, ret['charge']['initial'])
+        assert_equal(total, ret['charge']['final'])
+        for fee in ret['fees']:
+            assert_equal(fees[fee['name']], fee['fee'])
+
+    @tag('payment')
+    def test_multiple_with_stripe_fee(self):
+        charge = Decimal('100.0000')
+        # fractional pct = 0.029
+        # flat fee = 0.30
+        stripe_fee = Decimal('3.3900')
+        # fractional pct = 0.03
+        # flat fee = 0.00
+        poold_fee = Decimal('3.0000')
+        fees = {'poold-transaction': poold_fee,
+                'stripe-transaction': stripe_fee}
+        total = Decimal('106.3900')
+
+        ret = payment.total_after_fees(charge,
+                                       fees=(self.stripe_fee, self.poold_fee))
+
+        assert_equal(charge, ret['charge']['initial'])
+        assert_equal(total, ret['charge']['final'])
+        for fee in ret['fees']:
+            assert_equal(fees[fee['name']], fee['fee'])
 
 
 class TestTokenExchange(PooldLibPostgresBaseTest):
@@ -60,6 +123,7 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         assert_true(isinstance(stripe_user_id, basestring))
         assert_true(stripe_user_id.startswith('cus_'))
 
+    @tag('payment')
     @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_customer_create_call(self, mock_customer_module):
         mock_customer = Mock()
@@ -79,6 +143,7 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
         self.patched_logger.transaction.assert_called_once_with('New Stripe Customer Created',
                                                                 **exp_kwargs)
 
+    @tag('payment')
     @raises(stripe.AuthenticationError)
     @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_authentication_error(self, mock_customer):
@@ -103,6 +168,7 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
             self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
+    @tag('payment')
     @raises(stripe.InvalidRequestError)
     @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_invalid_request_error(self, mock_customer):
@@ -127,6 +193,7 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
             self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
+    @tag('payment')
     @raises(stripe.APIConnectionError)
     @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_api_connection_error(self, mock_customer):
@@ -151,6 +218,7 @@ class TestTokenExchange(PooldLibPostgresBaseTest):
             self.patched_logger.error.assert_called_once_with(msg, data=data, **meta)
             raise
 
+    @tag('payment')
     @raises(stripe.APIError)
     @patch('pooldlib.payment._Customer', spec=stripe.Customer)
     def test_api_error(self, mock_customer):

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from pooldlib.postgresql import db
 
 SQLALCHEMY_DATABASE_URI = 'postgresql://localhost/pooldin-test'
@@ -13,11 +15,14 @@ def setup_package(self):
     config['SQLALCHEMY_RECORD_QUERIES'] = SQLALCHEMY_RECORD_QUERIES
     config['DEBUG'] = DEBUG
     db.init_connection(config)
+    db.drop_all()
     db.create_all()
+    create_fixtures()
 
 
 def teardown_package(self):
-    db.drop_all()
+    pass
+    #db.drop_all()
 
 
 def create_fixtures():
@@ -46,19 +51,36 @@ def _create_currencies():
 
 
 def _create_fees():
-    from pooldlib.postgresql import Fee
+    from pooldlib.postgresql import Fee, User, Balance
 
-    def factory(name, description):
+    def factory(name, description, percentage, flat):
+        u = User()
+        u.username = name
+        u.password = name
+        db.session.add(u)
+        db.session.flush()
+
+        b = Balance()
+        b.type = 'user'
+        b.user_id = u.id
+        b.amount = 0
+        b.currency_id = 1
+        db.session.add(b)
+
         f = Fee()
         f.name = name
         f.description = description
+        f.fractional_pct = percentage
+        f.flat = flat
+        f.user_id = u.id
         db.session.add(f)
 
-    fees = (('processing', 'Financial transaction processing fee.'),
-            ('stripe-txn', 'Stripe transaction fee.'))
+    fees = (('poold-transaction', 'Poold Inc. transaction processing fee.', Decimal('0.0300'), Decimal('0.0000')),
+            ('stripe-transaction', 'Stripe transaction  processing fee.', Decimal('0.0290'), Decimal('0.3000')),
+            ('gimmy-more', 'Fee used for testing.', Decimal('0.0500'), Decimal('0.5000')))
 
-    for (n, d) in fees:
-        factory(n, d)
+    for (n, d, p, f) in fees:
+        factory(n, d, p, f)
     db.session.commit()
 
 

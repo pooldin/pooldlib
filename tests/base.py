@@ -12,8 +12,6 @@ from pooldlib.postgresql import (db,
                                  CommunityGoal,
                                  CommunityGoalMeta)
 
-from tests import create_fixtures
-
 
 class PooldLibBaseTest(unittest.TestCase):
 
@@ -102,8 +100,7 @@ class PooldLibBaseTest(unittest.TestCase):
         return cg
 
     def create_balance(self, user=None, community=None, currency_code=None, amount=None):
-        if not amount:
-            amount = Decimal('50.0000')
+        amount = amount if amount is not None else Decimal('50.0000')
         if not currency_code:
             currency_code = 'USD'
 
@@ -129,10 +126,6 @@ class PooldLibBaseTest(unittest.TestCase):
 
 
 class PooldLibPostgresBaseTest(PooldLibBaseTest):
-
-    def setUp(self):
-        # Create us some useful fixtures
-        create_fixtures()
 
     def tearDown(self):
         # Close the session so we don't lock tables while trunc***** them.
