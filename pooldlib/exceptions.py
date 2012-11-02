@@ -18,6 +18,19 @@ class ConfigurationError(PooldlibError):
 
 
 ##################################
+### Fee API Related Exceptions
+class FeeAPIError(PooldlibError):
+    """Base clase for Fee API related errors.
+    """
+
+
+class UnknownFeeError(PooldlibError):
+    """Raised when a fee which doesn't exist in the system is referenced.
+    """
+##################################
+
+
+##################################
 ### Communication API Related Exceptions
 class CommunicationAPIError(PooldlibError):
     """Base class for exceptions raised by the Communication API.
@@ -78,9 +91,27 @@ class EmailUnavailableError(UserAPIError):
     address already paired with another user.
     """
 
+
 class PreviousStripeAssociationError(UserAPIError):
     """Raised when an attempt is made to associate a stripe user with
     a poold user who is already associated with one.
+    """
+
+
+class StripeCustomerAccountError(UserAPIError):
+    """Raised when a problem is encountered with regards to a
+    stripe customer account.
+    """
+
+
+class StripeUserAccountError(UserAPIError):
+    """Raised when a problem is encountered with regards to a
+    stripe user account.
+    """
+
+class UserCreditCardDeclinedError(UserAPIError):
+    """Raised when a transaction fails because a user's card
+    was declined.
     """
 ##################################
 
@@ -129,6 +160,11 @@ class DuplicateCommunityGoalUserAssociationError(CommunityAPIError):
 class UnknownCommunityAssociationError(CommunityAPIError):
     """Raised when an attempt is made to access an unknown user/community
     association.
+    """
+
+
+class CommunityConfigurationError(CommunityAPIError):
+    """Raised when a problem is encountered with a community configuration.
     """
 
 
