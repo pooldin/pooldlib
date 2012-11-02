@@ -89,6 +89,23 @@ def get(community_id, filter_inactive=False):
     return community or None
 
 
+def organizer(community):
+    """Return the user whose association with the given community as
+    it's organizer. If none is found, `None` is returned.
+
+    :param community: Community for which to retrieve the organizer.
+    :type community: :class:`pooldlib.postgresql.models.Community`
+
+    :returns: :class:`pooldlib.postgresql.models.User` or None
+    """
+    org_association = CommunityAssociationModel.query.filter_by(community_id=community.id)\
+                                                     .filter_by(role='organizer')\
+                                                     .first()
+    if org_association is None:
+        return None
+    return org_association.user
+
+
 def create(organizer, name, description, start=None, end=None):
     """Create and return a new instance of
     :class:`pooldlib.postgresql.models.Community`.
