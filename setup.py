@@ -32,6 +32,7 @@ install_requires = [
     'Werkzeug>=0.7',
     'SQLAlchemy',
     'stripe',
+    'twilio',
 ]
 
 tests_require = [
