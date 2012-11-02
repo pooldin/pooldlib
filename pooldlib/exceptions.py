@@ -53,6 +53,12 @@ class NoContentEmailError(CommunicationAPIError):
     """Raised if an attempt is made to send an email prior to it's content
     being set.
     """
+
+
+class UserMobileNumberError(CommunicationAPIError):
+    """Raised when an error with a user's mobile number is encountered while
+    sending an SMS text message.
+    """
 ##################################
 
 
