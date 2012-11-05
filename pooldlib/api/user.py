@@ -6,6 +6,7 @@ pooldlib.api.user
 
 """
 import re
+from uuid import uuid4 as uuid
 from decimal import Decimal
 
 from sqlalchemy.exc import IntegrityError as SQLAlchemyIntegrityError
@@ -585,6 +586,7 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
     """
     from pooldlib.api import Transact
     transact_ledger = Transact()
+    deposit_id, withdrawal_id = [uuid() for i in range(2)]
 
     if user.stripe_customer_id is None:
         msg = 'User does not have an associated Stripe customer account!'
@@ -626,13 +628,15 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
                                 stripe_ref_number,
                                 currency,
                                 credit=amount,
-                                fee=None)
+                                fee=None,
+                                id=deposit_id)
     # External Ledger for ``user`` for ``credit=final_charge_amount``
     transact_ledger.external_ledger(user,
                                     'stripe',
                                     stripe_ref_number,
                                     currency,
-                                    credit=txn_dict['charge']['final'])
+                                    credit=txn_dict['charge']['final'],
+                                    id=deposit_id)
     for fee in fees:
         fee_amount = [f['fee'] for f in txn_dict['fees'] if f['name'] == fee.name][0]
         # External Ledger for ``user`` for ``debit=fee_amount``
@@ -641,40 +645,47 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
                                         stripe_ref_number,
                                         currency,
                                         debit=fee_amount,
-                                        fee=fee)
+                                        fee=fee,
+                                        id=deposit_id)
 
     if not goal:
         transact_ledger.transfer(amount,
                                  currency,
                                  origin=user,
-                                 destination=community)
+                                 destination=community,
+                                 id=uuid())
         transact_ledger.transfer(amount,
                                  currency,
                                  origin=community,
-                                 destination=organizer)
+                                 destination=organizer,
+                                 id=uuid())
     else:
         transact_ledger.transfer_to_community_goal(amount,
                                                    currency,
                                                    goal,
-                                                   user)
+                                                   user,
+                                                   id=uuid())
         transact_ledger.transfer_from_community_goal(amount,
                                                      currency,
                                                      goal,
-                                                     organizer)
+                                                     organizer,
+                                                     id=uuid())
 
     transact_ledger.transaction(organizer,
                                 'stripe',
                                 stripe_ref_number,
                                 currency,
-                                debit=amount)
+                                debit=amount,
+                                id=withdrawal_id)
     # External Ledger for ``user`` for ``debit=fee_amount``
     transact_ledger.external_ledger(organizer,
                                     'stripe',
                                     stripe_ref_number,
                                     currency,
-                                    debit=amount)
+                                    debit=amount,
+                                    id=withdrawal_id)
     transact_ledger.execute()
-    return transact_ledger.id
+    return (deposit_id, withdrawal_id)
 
 
 def _convert_dollars_to_cents(amount):
