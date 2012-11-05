@@ -15,6 +15,7 @@ from pooldlib.api import Transact
 from pooldlib.exceptions import (InsufficentFundsTransferError,
                                  InsufficentFundsTransactionError)
 
+from tests import tag
 from tests.base import PooldLibPostgresBaseTest
 
 
@@ -38,6 +39,7 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
 
         self.community_goal = self.create_community_goal(self.community, uuid().hex, uuid().hex)
 
+    @tag('transact')
     def test_simple_transfer_to(self):
         t = Transact()
         t.transfer_to_community_goal(Decimal('25.0000'),
@@ -47,7 +49,7 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         assert_true(t.verify())
         t.execute()
 
-        xfers = TransferModel.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(record_id=t.id).all()
 
         check_balance = self.user_a.balance_for_currency(self.currency)
         debit_xfer = [x for x in xfers if x.balance == check_balance]
@@ -73,6 +75,7 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         assert_equal(self.user_a.id, comm_ledger.party_id)
         assert_equal('user', comm_ledger.party_type)
 
+    @tag('transact')
     def test_simple_transfer_from(self):
         t = Transact()
         t.transfer_from_community_goal(Decimal('25.0000'),
@@ -82,7 +85,7 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         assert_true(t.verify())
         t.execute()
 
-        xfers = TransferModel.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(record_id=t.id).all()
 
         check_balance = self.user_a.balance_for_currency(self.currency)
         debit_xfer = [x for x in xfers if x.balance == check_balance]
@@ -127,6 +130,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
         self.community_a = self.create_community(uuid().hex, uuid().hex)
         self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
 
+    @tag('transact')
     def test_basic_transfer(self):
         t = Transact()
         t.transfer(Decimal('25.0000'), self.currency, destination=self.community_a, origin=self.user_a)
@@ -134,7 +138,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
 
         t.execute()
 
-        xfers = TransferModel.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(record_id=t.id).all()
         assert_equal(2, len(xfers))
 
         debit_xfer = [x for x in xfers if x.balance == self.user_a.balance_for_currency(self.currency)]
@@ -145,6 +149,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
         assert_equal(1, len(credit_xfer))
         assert_equal(Decimal('25.0000'), credit_xfer[0].credit)
 
+    @tag('transact')
     @raises(InsufficentFundsTransferError)
     def test_insufficient_funds_transfer(self):
         t = Transact()
@@ -152,6 +157,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
 
         t.execute()
 
+    @tag('transact')
     def test_transfer_with_fee(self):
         t = Transact()
         t.transfer(Decimal('25.0000'), self.currency, destination=self.community_a, origin=self.user_a)
@@ -161,7 +167,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
 
         t.execute()
 
-        xfers = TransferModel.query.filter_by(group_id=t.id).all()
+        xfers = TransferModel.query.filter_by(record_id=t.id).all()
         assert_equal(3, len(xfers))
 
         check_balance = self.user_a.balance_for_currency(self.currency)
@@ -213,6 +219,7 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
         self.community_a = self.create_community(uuid().hex, uuid().hex)
         self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
 
+    @tag('transact')
     def test_basic_transaction(self):
         t = Transact()
         t.transaction(self.user_a,
@@ -243,6 +250,7 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
 
         assert_equal(Decimal('75.0000'), self.user_a_balance.amount)
 
+    @tag('transact')
     @raises(InsufficentFundsTransactionError)
     def test_insufficient_funds_transaction(self):
         t = Transact()
@@ -253,6 +261,7 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
                       debit=Decimal('55.0000'))
         t.execute()
 
+    @tag('transact')
     def test_transfer_with_fee(self):
         raise SkipTest()
         t = Transact()
