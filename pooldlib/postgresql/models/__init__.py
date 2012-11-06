@@ -1,5 +1,6 @@
 from .balance import Balance
 from .campaign import (Campaign,
+                       CampaignMeta,
                        CampaignAssociation,
                        Invitee,
                        CampaignGoal,

@@ -9,11 +9,14 @@ from pooldlib.exceptions import (InvalidUserRoleError,
                                  DuplicateCampaignGoalUserAssociationError)
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (Campaign as CampaignModel,
+                                 CampaignMeta as CampaignMetaModel,
                                  CampaignGoal as CampaignGoalModel,
                                  CampaignGoalAssociation as CampaignGoalAssociationModel,
                                  CampaignAssociation as CampaignAssociationModel)
+
 from pooldlib.api import campaign
 
+from tests import tag
 from tests.base import PooldLibPostgresBaseTest
 
 
@@ -26,11 +29,13 @@ class TestGetCampaign(PooldLibPostgresBaseTest):
         self.campaign = self.create_campaign(self.com_name, self.com_description)
         self.com_id = self.campaign.id
 
+    @tag('campaign')
     def test_simple_get(self):
         com = campaign.get(self.com_id, filter_inactive=True)
         assert_equal(self.com_name, com.name)
         assert_equal(self.com_description, com.description)
 
+    @tag('campaign')
     def test_get_inactive_not_returned(self):
         now = datetime.utcnow()
         com = self.create_campaign('Test Incactive Campaign Not Returned.',
@@ -40,6 +45,7 @@ class TestGetCampaign(PooldLibPostgresBaseTest):
         ret = campaign.get(com.id, filter_inactive=True)
         assert_true(ret is None)
 
+    @tag('campaign')
     def test_get_inactive_returned(self):
         now = datetime.utcnow()
         com = self.create_campaign('Test Incactive Campaign Returned.',
@@ -50,6 +56,7 @@ class TestGetCampaign(PooldLibPostgresBaseTest):
         assert_equal(com.name, ret.name)
         assert_equal(com.description, ret.description)
 
+    @tag('campaign')
     def test_get_disabled_not_returned(self):
         self.campaign.enabled = False
         db.session.commit()
@@ -92,28 +99,33 @@ class TestGetCommunities(PooldLibPostgresBaseTest):
                                                    self.com_three_end)
         self.com_three_id = self.campaign_three.id
 
+    @tag('campaign')
     def test_get_all_communities(self):
         comms = campaign.communities(None, filter_inactive=False)
         # At this point we don't know the current state of the db, so there
         # should be a minimum of 3 communities existing.
         assert_true(3 <= len(comms))
 
+    @tag('campaign')
     def test_get_all_communities_exclude_inactive(self):
         comms = campaign.communities(None, filter_inactive=True)
         # At this point we don't know the current state of the db, so there
         # should be a minimum of 1 active campaign existing.
         assert_true(1 <= len(comms))
 
+    @tag('campaign')
     def test_get_all_communities_in_list(self):
         comms = campaign.communities([self.com_one_id, self.com_two_id, self.com_three_id],
                                      filter_inactive=False)
         assert_equal(3, len(comms))
 
+    @tag('campaign')
     def test_get_communities_exclude_inactive(self):
         comms = campaign.communities([self.com_one_id, self.com_two_id, self.com_three_id],
                                      filter_inactive=True)
         assert_equal(1, len(comms))
 
+    @tag('campaign')
     def test_get_communities_exclude_all_inactive(self):
         comms = campaign.communities([self.com_one_id, self.com_three_id])
         assert_equal(0, len(comms))
@@ -128,6 +140,7 @@ class TestCreateCampaign(PooldLibPostgresBaseTest):
         self.email = '%s@example.com' % self.username
         self.user = self.create_user(self.username, self.name, self.email)
 
+    @tag('campaign')
     def test_simple_create(self):
         com_name = uuid().hex
         com = campaign.create(self.user,
@@ -139,6 +152,42 @@ class TestCreateCampaign(PooldLibPostgresBaseTest):
         q_com = q_com[0]
         assert_equal('It Tests Simple Campaign Creates.', q_com.description)
 
+    @tag('campaign')
+    def test_create_with_metadata(self):
+        key_one = 'property_one'
+        value_one = 'property_value_one'
+        key_two = 'property_two'
+        value_two = 'property_value_two'
+
+        kwargs = {key_one: value_one,
+                  key_two: value_two}
+        com_name = uuid().hex
+        com = campaign.create(self.user,
+                              com_name,
+                              'It Tests Simple Campaign Creates.',
+                              **kwargs)
+        assert_true(isinstance(com, CampaignModel))
+        q_com = CampaignModel.query.filter_by(name=com_name).all()
+        assert_equal(1, len(q_com))
+        q_com = q_com[0]
+        assert_equal('It Tests Simple Campaign Creates.', q_com.description)
+
+        q_commeta = CampaignMetaModel.query.filter_by(campaign_id=com.id).all()
+        assert_equal(2, len(q_commeta))
+        q_key_one = CampaignMetaModel.query.filter_by(campaign_id=com.id)\
+                                           .filter_by(key=key_one)\
+                                           .first()
+        assert_equal(value_one, q_key_one.value)
+        # Check the property on the CampaignModel
+        assert_equal(value_one, getattr(com, key_one))
+        q_key_two = CampaignMetaModel.query.filter_by(campaign_id=com.id)\
+                                           .filter_by(key=key_two)\
+                                           .first()
+        assert_equal(value_two, q_key_two.value)
+        # Check the property on the CampaignModel
+        assert_equal(value_two, getattr(com, key_two))
+
+    @tag('campaign')
     def test_organizer_association(self):
         com_name = uuid().hex
         com = campaign.create(self.user,
@@ -172,6 +221,7 @@ class TestCampaignAssociateUser(PooldLibPostgresBaseTest):
         self.email = '%s@example.com' % self.username
         self.user = self.create_user(self.username, self.name, self.email)
 
+    @tag('campaign')
     def test_associate_organizer(self):
         campaign.associate_user(self.campaign, self.user, 'organizer', 'participating')
 
@@ -182,6 +232,7 @@ class TestCampaignAssociateUser(PooldLibPostgresBaseTest):
         ass = ass[0]
         assert_equal('organizer', ass.role)
 
+    @tag('campaign')
     def test_associate_participant(self):
         campaign.associate_user(self.campaign, self.user, 'participant', 'participating')
 
@@ -192,10 +243,12 @@ class TestCampaignAssociateUser(PooldLibPostgresBaseTest):
         ass = ass[0]
         assert_equal('participant', ass.role)
 
+    @tag('campaign')
     @raises(InvalidUserRoleError)
     def test_associate_unknown_role(self):
         campaign.associate_user(self.campaign, self.user, 'MinisterOfSillyWalks', 'walker')
 
+    @tag('campaign')
     @raises(DuplicateCampaignUserAssociationError)
     def test_create_duplicate_association(self):
         campaign.associate_user(self.campaign, self.user, 'organizer', 'participating')
@@ -216,11 +269,13 @@ class TestDisableCampaign(PooldLibPostgresBaseTest):
                                              self.com_end)
         self.com_id = self.campaign.id
 
+    @tag('campaign')
     def test_simple_disable(self):
         campaign.disable(self.campaign)
         ret = CampaignModel.query.get(self.com_id)
         assert_false(ret.enabled)
 
+    @tag('campaign')
     def test_simple_disable_with_id(self):
         campaign.disable(self.campaign)
         ret = CampaignModel.query.get(self.com_id)
@@ -261,12 +316,14 @@ class TestGetAssociations(PooldLibPostgresBaseTest):
 
         self.user_ids = (self.user_one.id, self.user_two.id, self.user_three.id)
 
+    @tag('campaign')
     def test_simple_get(self):
         asses = campaign.get_associations(self.campaign)
         assert_equal(3, len(asses))
         for ass in asses:
             assert_true(ass.user_id in self.user_ids)
 
+    @tag('campaign')
     def test_get_single_association(self):
         ass = campaign.get_associations(self.campaign, user=self.user_one)
         assert_equal(1, len(ass))
@@ -295,6 +352,7 @@ class TestCampaignUpdateUserRole(PooldLibPostgresBaseTest):
         self.user = self.create_user(self.username, self.name, self.email)
         self.create_campaign_association(self.campaign, self.user, 'organizer')
 
+    @tag('campaign')
     def test_update_new_role(self):
         ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
                                                        user_id=self.user.id).first()
@@ -328,6 +386,7 @@ class TestCampaignDisassociateUser(PooldLibPostgresBaseTest):
         self.user = self.create_user(self.username, self.name, self.email)
         self.create_campaign_association(self.campaign, self.user, 'organizer')
 
+    @tag('campaign')
     def test_remove_user_association(self):
         ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
                                                        user_id=self.user.id).first()
@@ -344,6 +403,78 @@ class TestUpdateCampaign(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestUpdateCampaign, self).setUp()
+        self.com_name = 'Test Update Community'
+        self.com_description = 'To Test Update Community'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.campaign = self.create_campaign(self.com_name,
+                                             self.com_description,
+                                             self.com_start,
+                                             self.com_end)
+        self.meta_key_one = 'property_one'
+        self.meta_key_value_one = 'property one value'
+        self.meta_key_two = 'property_two'
+        self.meta_key_value_two = 'property two value'
+        kwargs = {self.meta_key_one: self.meta_key_value_one,
+                  self.meta_key_two: self.meta_key_value_two}
+        self.create_campaign_meta(self.campaign, **kwargs)
+        self.com_id = self.campaign.id
+
+    @tag('campaign')
+    def test_update_meta(self):
+        q_key_one = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_one)\
+                                           .first()
+        assert_equal(self.meta_key_value_one, q_key_one.value)
+        q_key_two = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_two)\
+                                           .first()
+        assert_equal(self.meta_key_value_two, q_key_two.value)
+
+        update_value_one = self.meta_key_value_one + ' updated'
+        update_value_two = self.meta_key_value_two + ' updated'
+        kwargs = {self.meta_key_one: update_value_one,
+                  self.meta_key_two: update_value_two}
+
+        campaign.update(self.campaign, **kwargs)
+
+        q_key_one = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_one)\
+                                           .first()
+        assert_equal(update_value_one, q_key_one.value)
+        # Check the property on the CampaignModel
+        assert_equal(update_value_one, getattr(self.campaign, self.meta_key_one))
+        q_key_two = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_two)\
+                                           .first()
+        assert_equal(update_value_two, q_key_two.value)
+        # Check the property on the CampaignModel
+        assert_equal(update_value_two, getattr(self.campaign, self.meta_key_two))
+
+    @tag('campaign')
+    def test_remove_meta(self):
+        q_key_one = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_one)\
+                                           .first()
+        assert_equal(self.meta_key_value_one, q_key_one.value)
+        q_key_two = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                           .filter_by(key=self.meta_key_two)\
+                                           .first()
+        assert_equal(self.meta_key_value_two, q_key_two.value)
+
+        kwargs = {self.meta_key_one: None,
+                  self.meta_key_two: None}
+
+        campaign.update(self.campaign, **kwargs)
+
+        q_key_one_del = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                               .filter_by(key=self.meta_key_one)\
+                                               .first()
+        assert_true(q_key_one_del is None)
+        q_key_two_del = CampaignMetaModel.query.filter_by(campaign_id=self.campaign.id)\
+                                               .filter_by(key=self.meta_key_two)\
+                                               .first()
+        assert_true(q_key_two_del is None)
 
 
 class TestGetCampaignTransfers(PooldLibPostgresBaseTest):
@@ -386,6 +517,7 @@ class TestGetCampaignGoal(PooldLibPostgresBaseTest):
                                                     start=now + timedelta(days=1),
                                                     end=now + timedelta(days=2))
 
+    @tag('campaign')
     def test_simple_get(self):
         goal = campaign.goal(self.goal_one.id, filter_inactive=False)
         assert_equal(self.goal_one.id, goal.id)
@@ -396,6 +528,7 @@ class TestGetCampaignGoal(PooldLibPostgresBaseTest):
         goal = campaign.goal(self.goal_three.id, filter_inactive=False)
         assert_equal(self.goal_three.id, goal.id)
 
+    @tag('campaign')
     def test_get_filter_inactive(self):
         goal = campaign.goal(self.goal_one.id, filter_inactive=True)
         assert_true(goal is None)
@@ -442,18 +575,21 @@ class TestGetCampaignGoals(PooldLibPostgresBaseTest):
                                                     end=now + timedelta(days=2))
         self.goal_ids = (self.goal_one.id, self.goal_two.id, self.goal_three.id)
 
+    @tag('campaign')
     def test_simple_get_goals(self):
         goals = campaign.goals(self.campaign, filter_inactive=False)
         assert_equal(3, len(goals))
         for goal in goals:
             assert_true(goal.id in self.goal_ids)
 
+    @tag('campaign')
     def test_get_filter_inactive(self):
         goal = campaign.goals(self.campaign, filter_inactive=True)
         assert_equal(1, len(goal))
         goal = goal[0]
         assert_equal(self.goal_two.id, goal.id)
 
+    @tag('campaign')
     def test_simple_get_specific_goals(self):
         goal_ids = (self.goal_one.id, self.goal_two.id)
         goals = campaign.goals(self.campaign, goal_ids=goal_ids, filter_inactive=False)
@@ -461,6 +597,7 @@ class TestGetCampaignGoals(PooldLibPostgresBaseTest):
         for goal in goals:
             assert_true(goal.id in goal_ids)
 
+    @tag('campaign')
     def test_get_filter_inactive_specific_goals(self):
         goal_ids = (self.goal_one.id, self.goal_two.id)
         goal = campaign.goals(self.campaign, goal_ids=goal_ids, filter_inactive=True)
@@ -483,6 +620,7 @@ class TestAddCampaignGoal(PooldLibPostgresBaseTest):
                                              self.com_end)
         self.com_id = self.campaign.id
 
+    @tag('campaign')
     def test_simple_add(self):
         campaign.add_goal(self.campaign,
                           'Test Simple Add',
@@ -497,6 +635,7 @@ class TestAddCampaignGoal(PooldLibPostgresBaseTest):
         assert_true(isinstance(goal.start, datetime))
         assert_true(goal.end is None)
 
+    @tag('campaign')
     def test_add_start_end_specified(self):
         start = datetime.utcnow()
         end = start + timedelta(days=30)
@@ -515,6 +654,7 @@ class TestAddCampaignGoal(PooldLibPostgresBaseTest):
         assert_equal(pytz.UTC.localize(start), goal.start)
         assert_equal(pytz.UTC.localize(end), goal.end)
 
+    @tag('campaign')
     def test_add_with_metadata(self):
         campaign.add_goal(self.campaign,
                           'Test Add With Metadata',
@@ -573,6 +713,7 @@ class TestCampaignGoalUserAssociation(PooldLibPostgresBaseTest):
                                                     start=now + timedelta(days=1),
                                                     end=now + timedelta(days=2))
 
+    @tag('campaign')
     def test_simple_association(self):
         campaign.associate_user_with_goal(self.goal_one, self.user, 'participating')
         cga = CampaignGoalAssociationModel.query.filter_by(user=self.user)\
@@ -586,6 +727,7 @@ class TestCampaignGoalUserAssociation(PooldLibPostgresBaseTest):
         assert_equal(self.campaign.id, cga.campaign_id)
         assert_equal(self.user.id, cga.user.id)
 
+    @tag('campaign')
     def test_multiple_associations(self):
         campaign.associate_user_with_goal(self.goal_one, self.user, 'participating')
         campaign.associate_user_with_goal(self.goal_two, self.user, 'participating')
@@ -627,6 +769,7 @@ class TestCampaignGoalUserAssociation(PooldLibPostgresBaseTest):
         assert_equal(self.campaign.id, cga.campaign_id)
         assert_equal(self.user.id, cga.user.id)
 
+    @tag('campaign')
     def test_associations_by_goal_assosiation(self):
         campaign.associate_user(self.campaign, self.user, 'participant', 'opted-in')
 
@@ -666,10 +809,12 @@ class TestCampaignGoalUserAssociation(PooldLibPostgresBaseTest):
         assert_equal(self.campaign.id, cga.campaign_id)
         assert_equal(self.user.id, cga.user.id)
 
+    @tag('campaign')
     @raises(InvalidGoalParticipationNameError)
     def test_invalid_association(self):
         campaign.associate_user_with_goal(self.goal_one, self.user, 'wedontneednostinkingoals')
 
+    @tag('campaign')
     @raises(DuplicateCampaignGoalUserAssociationError)
     def test_duplicate_association(self):
         campaign.associate_user_with_goal(self.goal_one, self.user, 'opted-in')
@@ -700,6 +845,7 @@ class TestUpdateCampaignGoal(PooldLibPostgresBaseTest):
         self.goal_meta = self.create_campaign_goal_meta(self.goal.id,
                                                         meta_key_one='meta_value_one')
 
+    @tag('campaign')
     def test_update_name_description(self):
         old_name = self.goal.name
         old_description = self.goal.description
@@ -720,6 +866,7 @@ class TestUpdateCampaignGoal(PooldLibPostgresBaseTest):
         assert_equal(old_start, goal.start)
         assert_equal(old_end, goal.end)
 
+    @tag('campaign')
     def test_update_meta(self):
         old_name = self.goal.name
         old_description = self.goal.description
@@ -754,6 +901,7 @@ class TestUpdateCampaignGoal(PooldLibPostgresBaseTest):
         assert_true(hasattr(goal, 'meta_key_two'))
         assert_equal('meta value two created', goal.meta_key_two)
 
+    @tag('campaign')
     def test_delete_meta(self):
         old_name = self.goal.name
         old_description = self.goal.description
@@ -806,11 +954,13 @@ class TestDisableCampaignGoal(PooldLibPostgresBaseTest):
                                               'project',
                                               start=self.start)
 
+    @tag('campaign')
     def test_simple_disable(self):
         campaign.disable_goal(self.goal)
         campaign_goal = CampaignGoalModel.query.get(self.goal.id)
         assert_false(campaign_goal.enabled)
 
+    @tag('campaign')
     def test_simple_disable_then_get(self):
         campaign.disable_goal(self.goal)
         campaign_goal = campaign.goal(self.goal.id)

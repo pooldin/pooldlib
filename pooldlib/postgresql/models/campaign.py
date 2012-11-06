@@ -2,7 +2,10 @@ from pooldlib.postgresql import db, common
 from pooldlib.postgresql.types import DateTimeTZ
 
 
-class Campaign(common.ConfigurationModel, common.ActiveMixin, common.BalanceMixin):
+class Campaign(common.ConfigurationModel,
+               common.ActiveMixin,
+               common.BalanceMixin,
+               common.MetadataMixin):
     pass
 
 

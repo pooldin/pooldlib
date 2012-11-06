@@ -14,6 +14,7 @@ from sqlalchemy.exc import (DataError as SQLAlchemyDataError,
 from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import (Campaign as CampaignModel,
                                  CampaignGoal as CampaignGoalModel,
+                                 CampaignMeta as CampaignMetaModel,
                                  CampaignGoalMeta as CampaignGoalMetaModel,
                                  CampaignAssociation as CampaignAssociationModel,
                                  CampaignGoalAssociation as CampaignGoalAssociationModel)
@@ -106,7 +107,7 @@ def organizer(campaign):
     return org_association.user
 
 
-def create(organizer, name, description, start=None, end=None):
+def create(organizer, name, description, start=None, end=None, **kwargs):
     """Create and return a new instance of
     :class:`pooldlib.postgresql.models.Campaign`.
 
@@ -122,6 +123,8 @@ def create(organizer, name, description, start=None, end=None):
     :type start: :class:`datetime.datetime`
     :param end: Active end datetime for the campaign in UTC, optional
     :type end: :class:`datetime.datetime` or `None`
+    :param kwargs: Metadata to associate with the new campaign.
+    :type kwargs: kwarg dictionary
 
     :returns: :class:`pooldlib.postgresql.models.Campaign`
     """
@@ -135,11 +138,23 @@ def create(organizer, name, description, start=None, end=None):
         session.add(campaign)
         session.commit()
 
+    meta = list()
+    for (k, v) in kwargs.items():
+        cm = CampaignMetaModel()
+        cm.key = k
+        cm.value = v
+        cm.campaign_id = campaign.id
+        meta.append(cm)
+
+    with transaction_session(auto_commit=True) as session:
+        for cm in meta:
+            session.add(cm)
+
     associate_user(campaign, organizer, 'organizer', 'participating')
     return campaign
 
 
-def update(campaign, name=None, description=None):
+def update(campaign, name=None, description=None, **kwargs):
     """Update name and description of a specified campaign.
 
     :param campaign: Campaign to update.
@@ -148,6 +163,9 @@ def update(campaign, name=None, description=None):
     :type name: string
     :param name: If specified, the new description for the campaign.
     :type name: string
+    :param kwargs: key-value pairs to associate with the `User` data model
+                   instance as metadata.
+    :type kwargs: kwarg dictionary
 
     :returns: :class:`pooldlib.postgresql.models.Campaign`
     """
@@ -156,9 +174,40 @@ def update(campaign, name=None, description=None):
     if description is not None:
         campaign.description = description
 
+    # TODO :: This is really inefficient, fix it. <brian@poold.in>
+    # TODO :: This methodology is mirrored in the user API as well.
+    update_meta = [m for m in campaign.metadata if m.key in kwargs]
+    create_meta = [(k, v) for (k, v) in kwargs.items() if not hasattr(campaign, k)]
+
+    meta_delta = list()
+    meta_remove = list()
+    for campaign_meta in update_meta:
+        value = kwargs[campaign_meta.key]
+        if value is None:
+            meta_remove.append(campaign_meta)
+        else:
+            campaign_meta.value = value
+            meta_delta.append(campaign_meta)
+
+    for (k, v) in create_meta:
+        m = CampaignMetaModel()
+        m.key = k
+        m.value = v
+        m.campaign_id = campaign
+        meta_delta.append(m)
+
     with transaction_session() as session:
         session.add(campaign)
         session.commit()
+
+        for m in meta_delta:
+            session.add(m)
+            session.flush()
+        for m in meta_remove:
+            session.delete(m)
+
+        session.commit()
+
     return campaign
 
 

@@ -8,6 +8,7 @@ from pooldlib.postgresql import (db,
                                  Balance,
                                  Currency,
                                  Campaign,
+                                 CampaignMeta,
                                  CampaignAssociation,
                                  CampaignGoal,
                                  CampaignGoalMeta)
@@ -59,6 +60,16 @@ class PooldLibBaseTest(unittest.TestCase):
 
         self.commit_model(c)
         return c
+
+    def create_campaign_meta(self, campaign, **kwargs):
+        if isinstance(campaign, (int, long)):
+            campaign = Campaign.query.get(campaign)
+        for (k, v) in kwargs.items():
+            cm = CampaignMeta()
+            cm.key = k
+            cm.value = v
+            cm.campaign_id = campaign.id
+            self.commit_model(cm)
 
     def create_campaign_association(self, campaign, user, role):
         ca = CampaignAssociation()
