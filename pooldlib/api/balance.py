@@ -41,13 +41,13 @@ def get(for_update=False, **kwargs):
     return balance
 
 
-def create_for_community(community, currency):
+def create_for_campaign(campaign, currency):
     b = BalanceModel()
     b.enabled = True
     b.amount = Decimal('0.0000')
     b.currency = currency
-    b.community = community
-    b.type = 'community'
+    b.campaign = campaign
+    b.type = 'campaign'
 
     with transaction_session() as session:
         session.add(b)

@@ -39,18 +39,18 @@ class ExternalLedger(common.LedgerModel):
     fee = db.relationship('Fee', backref='external_ledger_entries', lazy='select')
 
 
-class CommunityGoalLedger(common.LedgerModel):
-    __tablename__ = 'community_goal_ledger'
+class CampaignGoalLedger(common.LedgerModel):
+    __tablename__ = 'campaign_goal_ledger'
 
-    community = db.relationship('Community', backref='goals_ledger', lazy='select')
-    community_id = db.Column(db.BigInteger(unsigned=True),
-                             db.ForeignKey('community.id'),
-                             nullable=False)
-    community_goal = db.relationship('CommunityGoal', backref='ledger', lazy='select')
-    community_goal_id = db.Column(db.BigInteger(unsigned=True),
-                                  db.ForeignKey('community_goal.id'),
-                                  nullable=False)
+    campaign = db.relationship('Campaign', backref='goals_ledger', lazy='select')
+    campaign_id = db.Column(db.BigInteger(unsigned=True),
+                            db.ForeignKey('campaign.id'),
+                            nullable=False)
+    campaign_goal = db.relationship('CampaignGoal', backref='ledger', lazy='select')
+    campaign_goal_id = db.Column(db.BigInteger(unsigned=True),
+                                 db.ForeignKey('campaign_goal.id'),
+                                 nullable=False)
     party_id = db.Column(db.BigInteger(unsigned=True))
-    party_type = db.Column(db.Enum('user', 'community', name='community_goal_ledger_target_type_enum'),
+    party_type = db.Column(db.Enum('user', 'campaign', name='campaign_goal_ledger_target_type_enum'),
                            nullable=False,
                            index=True)

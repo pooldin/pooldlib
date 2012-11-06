@@ -27,7 +27,7 @@ class BalanceMixin(object):
         if self.__class__.__name__ == 'User':
             balance = balance.get(for_update=for_update, user_id=self.id, currency_id=currency.id)
         else:
-            balance = balance.get(for_update=for_update, community_id=self.id, currency_id=currency.id)
+            balance = balance.get(for_update=for_update, campaign_id=self.id, currency_id=currency.id)
 
         # If we don't find a balance for the user, create if requested to
         if not balance and get_or_create:
@@ -39,7 +39,7 @@ class BalanceMixin(object):
             if self.__class__.__name__ == 'User':
                 balance.user = self
             else:
-                balance.community = self
+                balance.campaign = self
             db.session.add(balance)
             self.balances.append(balance)
             db.session.flush()

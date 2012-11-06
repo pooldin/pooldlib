@@ -1,13 +1,13 @@
 from .balance import Balance
-from .community import (Community,
-                        CommunityAssociation,
-                        Invitee,
-                        CommunityGoal,
-                        CommunityGoalAssociation,
-                        CommunityGoalMeta)
+from .campaign import (Campaign,
+                       CampaignAssociation,
+                       Invitee,
+                       CampaignGoal,
+                       CampaignGoalAssociation,
+                       CampaignGoalMeta)
 from .currency import Currency
 from .fee import Fee
-from .ledger import InternalLedger, ExternalLedger, CommunityGoalLedger
+from .ledger import InternalLedger, ExternalLedger, CampaignGoalLedger
 from .purchase import Purchase
 from .transaction import Transfer, Transaction, Exchange
 from .user import User, UserMeta, AnonymousUser, UserPurchase

@@ -6,7 +6,7 @@ pooldlib.api
 
 """
 import balance
+import campaign
 import communication
-import community
 import fee
 import user

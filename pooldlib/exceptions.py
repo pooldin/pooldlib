@@ -123,54 +123,54 @@ class UserCreditCardDeclinedError(UserAPIError):
 
 
 ##################################
-### Community API Related Exceptions
-class CommunityAPIError(PooldlibError):
-    """Base class for exceptions raise by the Community API.
+### Campaign API Related Exceptions
+class CampaignAPIError(PooldlibError):
+    """Base class for exceptions raise by the Campaign API.
     """
 
 
-class UnknownCommunityError(CommunityAPIError):
-    """Raised when an attempt to access an unknown community is made.
+class UnknownCampaignError(CampaignAPIError):
+    """Raised when an attempt to access an unknown campaign is made.
     """
 
 
-class UnknownCommunityGoalError(CommunityAPIError):
-    """Raised when an attempt to access an unknown community goal is made.
+class UnknownCampaignGoalError(CampaignAPIError):
+    """Raised when an attempt to access an unknown campaign goal is made.
     """
 
 
-class InvalidUserRoleError(CommunityAPIError):
-    """Raised when an attempt is made to associate a user with a community
+class InvalidUserRoleError(CampaignAPIError):
+    """Raised when an attempt is made to associate a user with a campaign
     with an invalid role name.
     """
 
 
-class InvalidGoalParticipationNameError(CommunityAPIError):
-    """Raised when an attempt is made to associate a user with a community
+class InvalidGoalParticipationNameError(CampaignAPIError):
+    """Raised when an attempt is made to associate a user with a campaign
     goal using an invalid participation name.
     """
 
 
-class DuplicateCommunityUserAssociationError(CommunityAPIError):
-    """Raised when an attempt is to create a duplicate user/community
+class DuplicateCampaignUserAssociationError(CampaignAPIError):
+    """Raised when an attempt is to create a duplicate user/campaign
     association.
     """
 
 
-class DuplicateCommunityGoalUserAssociationError(CommunityAPIError):
-    """Raised when an attempt is to create a duplicate user/community goal
+class DuplicateCampaignGoalUserAssociationError(CampaignAPIError):
+    """Raised when an attempt is to create a duplicate user/campaign goal
     association.
     """
 
 
-class UnknownCommunityAssociationError(CommunityAPIError):
-    """Raised when an attempt is made to access an unknown user/community
+class UnknownCampaignAssociationError(CampaignAPIError):
+    """Raised when an attempt is made to access an unknown user/campaign
     association.
     """
 
 
-class CommunityConfigurationError(CommunityAPIError):
-    """Raised when a problem is encountered with a community configuration.
+class CampaignConfigurationError(CampaignAPIError):
+    """Raised when a problem is encountered with a campaign configuration.
     """
 
 

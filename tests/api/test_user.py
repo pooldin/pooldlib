@@ -27,7 +27,7 @@ from pooldlib.postgresql import (User as UserModel,
                                  Currency as CurrencyModel,
                                  ExternalLedger as ExternalLedgerModel,
                                  Transaction as TransactionModel,
-                                 CommunityGoalLedger as CommunityGoalLedgerModel,
+                                 CampaignGoalLedger as CampaignGoalLedgerModel,
                                  Balance as BalanceModel)
 from tests import tag
 from tests.base import PooldLibPostgresBaseTest
@@ -62,7 +62,7 @@ PROCESSING_ERROR_FAIL_CARD_NUMBER = 4000000000000119
 #  "created": 1351786736,
 #  "currency": "usd",
 #  "customer": null,
-#  "description": "User: 1, paying towards community: 115.",
+#  "description": "User: 1, paying towards campaign: 115.",
 #  "disputed": false,
 #  "failure_message": null,
 #  "fee": 639,
@@ -785,7 +785,7 @@ class TestAssociateStripeAuthorizationCode(PooldLibPostgresBaseTest):
         return user_meta
 
 
-class TestPaymentToCommunity(PooldLibPostgresBaseTest):
+class TestPaymentToCampaign(PooldLibPostgresBaseTest):
     # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
@@ -795,7 +795,7 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
     TEST_CARD_VISA_CVC = 123
 
     def setUp(self):
-        super(TestPaymentToCommunity, self).setUp()
+        super(TestPaymentToCampaign, self).setUp()
 
         try:
             config_path = os.path.join(os.path.dirname(DIR), '.env')
@@ -828,10 +828,10 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
         self.create_user_meta(self.organizer, stripe_user_id=uuid().hex)
         self.create_user_meta(self.organizer, stripe_user_token=config.STRIPE_CONNECT_AUTH_TOKEN)
 
-        self.com_name = 'Test Stripe Payment Community'
-        self.com_description = 'To Test Stripe Payment Community'
-        self.community = self.create_community(self.com_name, self.com_description)
-        self.community_balance = self.create_balance(community=self.community, currency_code='USD', amount=Decimal(0))
+        self.com_name = 'Test Stripe Payment Campaign'
+        self.com_description = 'To Test Stripe Payment Campaign'
+        self.campaign = self.create_campaign(self.com_name, self.com_description)
+        self.campaign_balance = self.create_balance(campaign=self.campaign, currency_code='USD', amount=Decimal(0))
 
         self.stripe_fee = FeeModel.query.filter_by(name='stripe-transaction').first()
         self.poold_fee = FeeModel.query.filter_by(name='poold-transaction').first()
@@ -849,16 +849,16 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
                                                .first()
 
     @tag('external', 'stripe')
-    @patch('pooldlib.api.user.get_community_organizer')
+    @patch('pooldlib.api.user.get_campaign_organizer')
     def test_simple_payment(self, mock_get_organizer):
         mock_get_organizer.return_value = self.organizer
         amount = Decimal('100')
 
-        ldgr_ids = user.payment_to_community(self.user,
-                                             self.community,
-                                             amount,
-                                             self.currency,
-                                             fees=(self.stripe_fee,))
+        ldgr_ids = user.payment_to_campaign(self.user,
+                                            self.campaign,
+                                            amount,
+                                            self.currency,
+                                            fees=(self.stripe_fee,))
         deposit_id, withdrawal_id = ldgr_ids
         user_txn = TransactionModel.query.filter_by(id=deposit_id)\
                                          .filter_by(balance_id=self.user_balance.id)\
@@ -892,18 +892,18 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
         assert_true(stripe_ldgr.credit is None)
 
     @tag('external', 'stripe', 'stripe-payment')
-    @patch('pooldlib.api.user.get_community_organizer')
+    @patch('pooldlib.api.user.get_campaign_organizer')
     def test_payment_multiple_fees(self, mock_get_organizer):
         mock_get_organizer.return_value = self.organizer
         m_currency = Mock()
         m_currency.code = 'USD'
         amount = Decimal('100')
 
-        ldgr_ids = user.payment_to_community(self.user,
-                                             self.community,
-                                             amount,
-                                             self.currency,
-                                             fees=(self.stripe_fee, self.poold_fee))
+        ldgr_ids = user.payment_to_campaign(self.user,
+                                            self.campaign,
+                                            amount,
+                                            self.currency,
+                                            fees=(self.stripe_fee, self.poold_fee))
         deposit_id, withdrawal_id = ldgr_ids
 
         user_txn = TransactionModel.query.filter_by(id=deposit_id)\
@@ -937,7 +937,7 @@ class TestPaymentToCommunity(PooldLibPostgresBaseTest):
         assert_true(poold_ldgr.credit is None)
 
 
-class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
+class TestPaymentToCampaignGoal(PooldLibPostgresBaseTest):
     # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
@@ -947,7 +947,7 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
     TEST_CARD_VISA_CVC = 123
 
     def setUp(self):
-        super(TestPaymentToCommunityGoal, self).setUp()
+        super(TestPaymentToCampaignGoal, self).setUp()
 
         try:
             config_path = os.path.join(os.path.dirname(DIR), '.env')
@@ -980,13 +980,13 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
         self.create_user_meta(self.organizer, stripe_user_id=uuid().hex)
         self.create_user_meta(self.organizer, stripe_user_token=config.STRIPE_CONNECT_AUTH_TOKEN)
 
-        self.com_name = 'Test Stripe Payment Community'
-        self.com_description = 'To Test Stripe Payment Community'
-        self.community = self.create_community(self.com_name, self.com_description)
-        self.community_balance = self.create_balance(community=self.community, currency_code='USD', amount=Decimal(0))
-        self.community_goal = self.create_community_goal(self.community,
-                                                         self.com_name + ' Goal',
-                                                         self.com_description + ' Goal')
+        self.com_name = 'Test Stripe Payment Campaign'
+        self.com_description = 'To Test Stripe Payment Campaign'
+        self.campaign = self.create_campaign(self.com_name, self.com_description)
+        self.campaign_balance = self.create_balance(campaign=self.campaign, currency_code='USD', amount=Decimal(0))
+        self.campaign_goal = self.create_campaign_goal(self.campaign,
+                                                       self.com_name + ' Goal',
+                                                       self.com_description + ' Goal')
 
         self.stripe_fee = FeeModel.query.filter_by(name='stripe-transaction').first()
         self.poold_fee = FeeModel.query.filter_by(name='poold-transaction').first()
@@ -1004,23 +1004,23 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
                                                .first()
 
     @tag('external', 'stripe')
-    @patch('pooldlib.api.user.get_community_organizer')
+    @patch('pooldlib.api.user.get_campaign_organizer')
     def test_simple_payment(self, mock_get_organizer):
         mock_get_organizer.return_value = self.organizer
         amount = Decimal('100')
 
-        ldgr_ids = user.payment_to_community(self.user,
-                                             self.community,
-                                             amount,
-                                             self.currency,
-                                             goal=self.community_goal,
-                                             fees=(self.stripe_fee,))
+        ldgr_ids = user.payment_to_campaign(self.user,
+                                            self.campaign,
+                                            amount,
+                                            self.currency,
+                                            goal=self.campaign_goal,
+                                            fees=(self.stripe_fee,))
         deposit_id, withdrawal_id = ldgr_ids
 
-        user_goal_deposit = CommunityGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
+        user_goal_deposit = CampaignGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
         assert_equal(Decimal('100.0000'), user_goal_deposit.credit)
         assert_true(user_goal_deposit.debit is None)
-        org_goal_withdrawal = CommunityGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
+        org_goal_withdrawal = CampaignGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
         assert_equal(Decimal('100.0000'), org_goal_withdrawal.debit)
         assert_true(org_goal_withdrawal.credit is None)
 
@@ -1056,25 +1056,25 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
         assert_true(stripe_ldgr.credit is None)
 
     @tag('external', 'stripe')
-    @patch('pooldlib.api.user.get_community_organizer')
+    @patch('pooldlib.api.user.get_campaign_organizer')
     def test_payment_multiple_fees(self, mock_get_organizer):
         mock_get_organizer.return_value = self.organizer
         m_currency = Mock()
         m_currency.code = 'USD'
         amount = Decimal('100')
 
-        ldgr_ids = user.payment_to_community(self.user,
-                                             self.community,
-                                             amount,
-                                             self.currency,
-                                             goal=self.community_goal,
-                                             fees=(self.stripe_fee, self.poold_fee))
+        ldgr_ids = user.payment_to_campaign(self.user,
+                                            self.campaign,
+                                            amount,
+                                            self.currency,
+                                            goal=self.campaign_goal,
+                                            fees=(self.stripe_fee, self.poold_fee))
         deposit_id, withdrawal_id = ldgr_ids
 
-        user_goal_deposit = CommunityGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
+        user_goal_deposit = CampaignGoalLedgerModel.query.filter_by(party_id=self.user.id).first()
         assert_equal(Decimal('100.0000'), user_goal_deposit.credit)
         assert_true(user_goal_deposit.debit is None)
-        org_goal_withdrawal = CommunityGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
+        org_goal_withdrawal = CampaignGoalLedgerModel.query.filter_by(party_id=self.organizer.id).first()
         assert_equal(Decimal('100.0000'), org_goal_withdrawal.debit)
         assert_true(org_goal_withdrawal.credit is None)
 
@@ -1116,7 +1116,7 @@ class TestPaymentToCommunityGoal(PooldLibPostgresBaseTest):
         assert_true(poold_ldgr.credit is None)
 
 
-class TestFailedPaymentToCommunity(PooldLibPostgresBaseTest):
+class TestFailedPaymentToCampaign(PooldLibPostgresBaseTest):
     # These are functional tests which depend on the stripe api.
     # To run all stripe api related tests run: $ make tests-stripe
     # To run all tests which utilize external services run: $ make
@@ -1124,7 +1124,7 @@ class TestFailedPaymentToCommunity(PooldLibPostgresBaseTest):
     TEST_CARD_CVC = 123
 
     def setUp(self):
-        super(TestFailedPaymentToCommunity, self).setUp()
+        super(TestFailedPaymentToCampaign, self).setUp()
 
         try:
             config_path = os.path.join(os.path.dirname(DIR), '.env')
@@ -1151,7 +1151,7 @@ class TestFailedPaymentToCommunity(PooldLibPostgresBaseTest):
 
     @tag('external', 'stripe', 'stripe-error')
     @raises(UserCreditCardDeclinedError)
-    @patch('pooldlib.api.user.get_community_organizer')
+    @patch('pooldlib.api.user.get_campaign_organizer')
     def test_fail_card(self, mock_get_organizer):
         exp = datetime.now() + timedelta(days=365)
         stripe_customer_id = _create_stripe_customer_for_card(self.FAIL_CARD_NUMBER,
@@ -1165,15 +1165,15 @@ class TestFailedPaymentToCommunity(PooldLibPostgresBaseTest):
         mock_get_organizer.return_value = self.organizer
         m_currency = Mock()
         m_currency.code = 'USD'
-        m_community = Mock()
-        m_community.id = randint(1, 999)
+        m_campaign = Mock()
+        m_campaign.id = randint(1, 999)
         amount = Decimal('100')
 
-        user.payment_to_community(self.user,
-                                  m_community,
-                                  amount,
-                                  m_currency,
-                                  fees=(self.stripe_fee, self.poold_fee))
+        user.payment_to_campaign(self.user,
+                                 m_campaign,
+                                 amount,
+                                 m_currency,
+                                 fees=(self.stripe_fee, self.poold_fee))
 
 
 def _create_stripe_customer_for_card(number, cvc, exp_month, exp_year, user):

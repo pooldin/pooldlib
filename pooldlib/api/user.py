@@ -24,14 +24,14 @@ from pooldlib.payment import (StripeCustomer,
                               StripeUser,
                               QUANTIZE_CENTS,
                               total_after_fees as payment_total_after_fees)
-from pooldlib.api.community import organizer as get_community_organizer
+from pooldlib.api.campaign import organizer as get_campaign_organizer
 from pooldlib.generators import alphanumeric_string
 from pooldlib.exceptions import (InvalidPasswordError,
                                  EmailUnavailableError,
                                  UsernameUnavailableError,
                                  StripeCustomerAccountError,
                                  StripeUserAccountError,
-                                 CommunityConfigurationError,
+                                 CampaignConfigurationError,
                                  PreviousStripeAssociationError,
                                  ExternalAPIUsageError,
                                  ExternalAPIError,
@@ -135,7 +135,7 @@ def connections(user, as_organizer=True):
 def communities(user):
     """Return all communities associated with the given user identifier.
 
-    :param user: User for which to return community connections.
+    :param user: User for which to return campaign connections.
     :type user: :class:`pooldlib.postgresql.models.User`
     """
     raise NotImplementedError()
@@ -166,12 +166,12 @@ def transfers(user, xfer_to=None, xfer_from=None, currency=None):
                     transferred **to** ``xfer_to``
     :type xfer_from: string identifier,
                      :class:`pooldlib.postgresql.models.User`
-                 or :class:`pooldlib.postgresql.models.Community`
+                 or :class:`pooldlib.postgresql.models.Campaign`
     :param xfer_from: If given, filter transfers to those in which the user
                       was the recipient of a transfer **from** ``xfer_from``
     :type xfer_from: string identifier,
                      :class:`pooldlib.postgresql.models.User`
-                 or :class:`pooldlib.postgresql.models.Community`
+                 or :class:`pooldlib.postgresql.models.Campaign`
     :param currency: Limit results to those associated with ``currency``.
     :type currency: Either string or
                     :class:`pooldlib.postgresql.models.Currency`
@@ -574,16 +574,16 @@ def associate_stripe_authorization_code(user, auth_code, stripe_key, force=False
            stripe_user_grant_scope=user_data['scope'])
 
 
-def payment_to_community(user, community, amount, currency, fees, note=None, goal=None):
-    """Use this function to make a payment to the 'organizer' of 'community'.
+def payment_to_campaign(user, campaign, amount, currency, fees, note=None, goal=None):
+    """Use this function to make a payment to the 'organizer' of 'campaign'.
     While we are actively not holding money, this method should be used for any
     and all money related transactions in which funds are being directed to a
-    community. Records will be written to all appropriate ledger tables, and the
+    campaign. Records will be written to all appropriate ledger tables, and the
     transaction executed with stripe.
 
     :raises: :class:`pooldlib.exception.StripeCustomerAccountError`
              :class:`pooldlib.exception.StripeUserAccountError`
-             :class:`pooldlib.exception.CommunityConfigurationError`
+             :class:`pooldlib.exception.CampaignConfigurationError`
     """
     transact_ledger = Transact()
     deposit_id, withdrawal_id = [uuid() for i in range(2)]
@@ -594,12 +594,12 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
         logger.error(msg, data=data)
         raise StripeCustomerAccountError(msg)
 
-    organizer = get_community_organizer(community)
+    organizer = get_campaign_organizer(campaign)
     if organizer is None:
-        msg = 'No organizer was found for community!'
-        data = dict(community=str(community))
+        msg = 'No organizer was found for campaign!'
+        data = dict(campaign=str(campaign))
         logger.critical(msg, data=data)
-        raise CommunityConfigurationError(msg)
+        raise CampaignConfigurationError(msg)
     if organizer.stripe_user_id is None or organizer.stripe_user_token is None:
         msg = 'User does not have an associated Stripe user account, need to complete this transaction!'
         data = dict(user=str(user))
@@ -608,7 +608,7 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
 
     txn_dict, amount_cents, fee_cents = _calculate_transaction_amounts(amount, fees)
 
-    description = 'User: %s, paying towards community: %s.' % (user.id, community.id)
+    description = 'User: %s, paying towards campaign: %s.' % (user.id, campaign.id)
     if note is not None:
         description += ' %s' % note
 
@@ -652,24 +652,24 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
         transact_ledger.transfer(amount,
                                  currency,
                                  origin=user,
-                                 destination=community,
+                                 destination=campaign,
                                  id=uuid())
         transact_ledger.transfer(amount,
                                  currency,
-                                 origin=community,
+                                 origin=campaign,
                                  destination=organizer,
                                  id=uuid())
     else:
-        transact_ledger.transfer_to_community_goal(amount,
-                                                   currency,
-                                                   goal,
-                                                   user,
-                                                   id=uuid())
-        transact_ledger.transfer_from_community_goal(amount,
-                                                     currency,
-                                                     goal,
-                                                     organizer,
-                                                     id=uuid())
+        transact_ledger.transfer_to_campaign_goal(amount,
+                                                  currency,
+                                                  goal,
+                                                  user,
+                                                  id=uuid())
+        transact_ledger.transfer_from_campaign_goal(amount,
+                                                    currency,
+                                                    goal,
+                                                    organizer,
+                                                    id=uuid())
 
     transact_ledger.transaction(organizer,
                                 'stripe',

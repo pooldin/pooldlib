@@ -7,10 +7,10 @@ from pooldlib.postgresql import (db,
                                  UserMeta,
                                  Balance,
                                  Currency,
-                                 Community,
-                                 CommunityAssociation,
-                                 CommunityGoal,
-                                 CommunityGoalMeta)
+                                 Campaign,
+                                 CampaignAssociation,
+                                 CampaignGoal,
+                                 CampaignGoalMeta)
 
 
 class PooldLibBaseTest(unittest.TestCase):
@@ -41,16 +41,16 @@ class PooldLibBaseTest(unittest.TestCase):
             um = UserMeta()
             um.key = k
             um.value = v
-            um.user = user
+            um.user_id = user.id
             self.commit_model(um)
 
-    def create_community(self, name, description, start=None, end=None):
+    def create_campaign(self, name, description, start=None, end=None):
         if start is None:
             start = datetime.utcnow()
         if end is None:
             end = start + timedelta(days=30)
 
-        c = Community()
+        c = Campaign()
         c.name = name
         c.description = description
         c.enabled = True
@@ -60,25 +60,26 @@ class PooldLibBaseTest(unittest.TestCase):
         self.commit_model(c)
         return c
 
-    def create_community_association(self, community, user, role):
-        ca = CommunityAssociation()
-        ca.user = user
-        ca.community = community
+    def create_campaign_association(self, campaign, user, role):
+        ca = CampaignAssociation()
+        ca.user_id = user.id
+        ca.campaign_id = campaign.id
         ca.role = role
         self.commit_model(ca)
         return ca
 
-    def create_community_goal(self, community, name, description, type=None, start=None, end=None):
+    def create_campaign_goal(self, campaign, name, description, type=None, start=None, end=None):
         if type is None:
             type = 'project'
         if start is None:
             start = datetime.utcnow()
         if end is None:
             end = start + timedelta(days=7)
-        if not isinstance(community, Community):
-            community = Community.query.get(community)
-        cg = CommunityGoal()
-        community.goals.append(cg)
+        if not isinstance(campaign, Campaign):
+            campaign = Campaign.query.get(campaign)
+        cg = CampaignGoal()
+        #campaign.goals.append(cg)
+        cg.campaign_id = campaign.id
         cg.enabled = True
         cg.name = name
         cg.description = description
@@ -89,17 +90,17 @@ class PooldLibBaseTest(unittest.TestCase):
 
         return cg
 
-    def create_community_goal_meta(self, community_goal_id, **kwargs):
-        cg = CommunityGoal.query.get(community_goal_id)
+    def create_campaign_goal_meta(self, campaign_goal_id, **kwargs):
+        cg = CampaignGoal.query.get(campaign_goal_id)
         for (k, v) in kwargs.items():
-            cgm = CommunityGoalMeta()
+            cgm = CampaignGoalMeta()
             cgm.key = k
             cgm.value = v
-            cgm.community_goal = cg
+            cgm.campaign_goal_id = cg.id
             self.commit_model(cgm)
         return cg
 
-    def create_balance(self, user=None, community=None, currency_code=None, amount=None):
+    def create_balance(self, user=None, campaign=None, currency_code=None, amount=None):
         amount = amount if amount is not None else Decimal('50.0000')
         if not currency_code:
             currency_code = 'USD'
@@ -111,11 +112,11 @@ class PooldLibBaseTest(unittest.TestCase):
         b.currency = currency
 
         if user is not None:
-            b.user = user
+            b.user_id = user.id
             b.type = 'user'
-        elif community is not None:
-            b.community = community
-            b.type = 'community'
+        elif campaign is not None:
+            b.campaign_id = campaign.id
+            b.type = 'campaign'
 
         self.commit_model(b)
         return b

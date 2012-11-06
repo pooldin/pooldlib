@@ -14,11 +14,11 @@ class Balance(common.Model, common.EnabledMixin):
                         db.ForeignKey('user.id'),
                         nullable=True)
     user = db.relationship('User', backref='balances', lazy='select')
-    community_id = db.Column(db.BigInteger(unsigned=True),
-                             db.ForeignKey('community.id'),
-                             nullable=True)
-    community = db.relationship('Community', backref='balances', lazy='select')
-    type = db.Column(db.Enum('user', 'community', name='balance_type_enum'))
+    campaign_id = db.Column(db.BigInteger(unsigned=True),
+                            db.ForeignKey('campaign.id'),
+                            nullable=True)
+    campaign = db.relationship('Campaign', backref='balances', lazy='select')
+    type = db.Column(db.Enum('user', 'campaign', name='balance_type_enum'))
 
     @classmethod
     def filter_by(cls, currency=None, query=None):
@@ -55,13 +55,13 @@ class Balance(common.Model, common.EnabledMixin):
                                              query=query)
 
     @classmethod
-    def filter_by_community(cls, community=None, currency=None):
-        if hasattr(community, 'id'):
-            community = community.id
+    def filter_by_campaign(cls, campaign=None, currency=None):
+        if hasattr(campaign, 'id'):
+            campaign = campaign.id
 
-        if not community:
+        if not campaign:
             return
 
-        query = cls.query.filter(cls.community_id == community)
+        query = cls.query.filter(cls.campaign_id == campaign)
         return super(Balance, cls).filter_by(currency=currency,
                                              query=query)

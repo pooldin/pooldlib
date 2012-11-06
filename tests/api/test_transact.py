@@ -8,7 +8,7 @@ from pooldlib.postgresql import (Transfer as TransferModel,
                                  Transaction as TransactionModel,
                                  InternalLedger as InternalLedgerModel,
                                  ExternalLedger as ExternalLedgerModel,
-                                 CommunityGoalLedger as CommunityGoalLedgerModel,
+                                 CampaignGoalLedger as CampaignGoalLedgerModel,
                                  Currency as CurrencyModel,
                                  Fee as FeeModel)
 from pooldlib import Transact
@@ -22,10 +22,10 @@ from tests.base import PooldLibPostgresBaseTest
 # TODO :: Transaction related tests need to be fixed!
 
 
-class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
+class TestUserCampaignGoalTransfer(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        super(TestUserCommunityGoalTransfer, self).setUp()
+        super(TestUserCampaignGoalTransfer, self).setUp()
         self.currency = CurrencyModel.query.filter_by(code='USD').first()
         self.currency = CurrencyModel.query.filter_by(code='USD').first()
         self.fee = FeeModel.query.get(1)
@@ -34,18 +34,18 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         self.user_a = self.create_user(n, '%s %s' % (n[:16], n[16:]))
         self.user_a_balance = self.create_balance(user=self.user_a, currency_code='USD')
 
-        self.community = self.create_community(uuid().hex, uuid().hex)
-        self.community_balance = self.create_balance(community=self.community, currency_code='USD')
+        self.campaign = self.create_campaign(uuid().hex, uuid().hex)
+        self.campaign_balance = self.create_balance(campaign=self.campaign, currency_code='USD')
 
-        self.community_goal = self.create_community_goal(self.community, uuid().hex, uuid().hex)
+        self.campaign_goal = self.create_campaign_goal(self.campaign, uuid().hex, uuid().hex)
 
     @tag('transact')
     def test_simple_transfer_to(self):
         t = Transact()
-        t.transfer_to_community_goal(Decimal('25.0000'),
-                                     self.currency,
-                                     self.community_goal,
-                                     self.user_a)
+        t.transfer_to_campaign_goal(Decimal('25.0000'),
+                                    self.currency,
+                                    self.campaign_goal,
+                                    self.user_a)
         assert_true(t.verify())
         t.execute()
 
@@ -58,30 +58,30 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         assert_equal(Decimal('25.0000'), debit_xfer[0].debit)
         assert_equal(None, debit_xfer[0].credit)
 
-        check_balance = self.community.balance_for_currency(self.currency)
+        check_balance = self.campaign.balance_for_currency(self.currency)
         credit_xfer = [x for x in xfers if x.balance == check_balance]
         assert_equal(1, len(credit_xfer))
         assert_equal(Decimal('75.0000'), check_balance.amount)
         assert_equal(Decimal('25.0000'), credit_xfer[0].credit)
         assert_equal(None, credit_xfer[0].debit)
 
-        comm_ledger = CommunityGoalLedgerModel.query.filter_by(community_goal=self.community_goal).all()
+        comm_ledger = CampaignGoalLedgerModel.query.filter_by(campaign_goal=self.campaign_goal).all()
         assert_equal(1, len(comm_ledger))
         comm_ledger = comm_ledger[0]
         assert_equal(Decimal('25.0000'), comm_ledger.credit)
         assert_equal(None, comm_ledger.debit)
-        assert_equal(self.community.id, comm_ledger.community_id)
-        assert_equal(self.community_goal.id, comm_ledger.community_goal_id)
+        assert_equal(self.campaign.id, comm_ledger.campaign_id)
+        assert_equal(self.campaign_goal.id, comm_ledger.campaign_goal_id)
         assert_equal(self.user_a.id, comm_ledger.party_id)
         assert_equal('user', comm_ledger.party_type)
 
     @tag('transact')
     def test_simple_transfer_from(self):
         t = Transact()
-        t.transfer_from_community_goal(Decimal('25.0000'),
-                                       self.currency,
-                                       self.community_goal,
-                                       self.user_a)
+        t.transfer_from_campaign_goal(Decimal('25.0000'),
+                                      self.currency,
+                                      self.campaign_goal,
+                                      self.user_a)
         assert_true(t.verify())
         t.execute()
 
@@ -94,28 +94,28 @@ class TestUserCommunityGoalTransfer(PooldLibPostgresBaseTest):
         assert_equal(Decimal('25.0000'), debit_xfer[0].credit)
         assert_equal(None, debit_xfer[0].debit)
 
-        check_balance = self.community.balance_for_currency(self.currency)
+        check_balance = self.campaign.balance_for_currency(self.currency)
         credit_xfer = [x for x in xfers if x.balance == check_balance]
         assert_equal(1, len(credit_xfer))
         assert_equal(Decimal('25.0000'), check_balance.amount)
         assert_equal(Decimal('25.0000'), credit_xfer[0].debit)
         assert_equal(None, credit_xfer[0].credit)
 
-        comm_ledger = CommunityGoalLedgerModel.query.filter_by(community_goal=self.community_goal).all()
+        comm_ledger = CampaignGoalLedgerModel.query.filter_by(campaign_goal=self.campaign_goal).all()
         assert_equal(1, len(comm_ledger))
         comm_ledger = comm_ledger[0]
         assert_equal(Decimal('25.0000'), comm_ledger.debit)
         assert_equal(None, comm_ledger.credit)
-        assert_equal(self.community.id, comm_ledger.community_id)
-        assert_equal(self.community_goal.id, comm_ledger.community_goal_id)
+        assert_equal(self.campaign.id, comm_ledger.campaign_id)
+        assert_equal(self.campaign_goal.id, comm_ledger.campaign_goal_id)
         assert_equal(self.user_a.id, comm_ledger.party_id)
         assert_equal('user', comm_ledger.party_type)
 
 
-class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
+class TestUserCampaignTransfer(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        super(TestUserCommunityTransfer, self).setUp()
+        super(TestUserCampaignTransfer, self).setUp()
         self.currency = CurrencyModel.query.filter_by(code='USD').first()
         self.fee = FeeModel.query.get(1)
 
@@ -127,13 +127,13 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
         self.user_b = self.create_user(n, '%s %s' % (n[:16], n[16:]))
         self.user_b_balance = self.create_balance(user=self.user_b, currency_code='USD')
 
-        self.community_a = self.create_community(uuid().hex, uuid().hex)
-        self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
+        self.campaign_a = self.create_campaign(uuid().hex, uuid().hex)
+        self.campaign_a_balance = self.create_balance(campaign=self.campaign_a, currency_code='USD')
 
     @tag('transact')
     def test_basic_transfer(self):
         t = Transact()
-        t.transfer(Decimal('25.0000'), self.currency, destination=self.community_a, origin=self.user_a)
+        t.transfer(Decimal('25.0000'), self.currency, destination=self.campaign_a, origin=self.user_a)
         assert_true(t.verify())
 
         t.execute()
@@ -145,7 +145,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
         assert_equal(1, len(debit_xfer))
         assert_equal(Decimal('25.0000'), debit_xfer[0].debit)
 
-        credit_xfer = [x for x in xfers if x.balance == self.community_a.balance_for_currency(self.currency)]
+        credit_xfer = [x for x in xfers if x.balance == self.campaign_a.balance_for_currency(self.currency)]
         assert_equal(1, len(credit_xfer))
         assert_equal(Decimal('25.0000'), credit_xfer[0].credit)
 
@@ -153,14 +153,14 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
     @raises(InsufficentFundsTransferError)
     def test_insufficient_funds_transfer(self):
         t = Transact()
-        t.transfer(Decimal('55.0000'), self.currency, destination=self.community_a, origin=self.user_a)
+        t.transfer(Decimal('55.0000'), self.currency, destination=self.campaign_a, origin=self.user_a)
 
         t.execute()
 
     @tag('transact')
     def test_transfer_with_fee(self):
         t = Transact()
-        t.transfer(Decimal('25.0000'), self.currency, destination=self.community_a, origin=self.user_a)
+        t.transfer(Decimal('25.0000'), self.currency, destination=self.campaign_a, origin=self.user_a)
         t.transfer(Decimal('5.0000'), self.currency, destination=self.user_b, origin=self.user_a, fee=self.fee)
 
         assert_true(t.verify())
@@ -177,7 +177,7 @@ class TestUserCommunityTransfer(PooldLibPostgresBaseTest):
         assert_equal(Decimal('30.0000'), debit_xfer[0].debit)
         assert_equal(None, debit_xfer[0].credit)
 
-        check_balance = self.community_a.balance_for_currency(self.currency)
+        check_balance = self.campaign_a.balance_for_currency(self.currency)
         credit_xfer = [x for x in xfers if x.balance == check_balance]
         assert_equal(1, len(credit_xfer))
         assert_equal(Decimal('75.0000'), check_balance.amount)
@@ -216,8 +216,8 @@ class TestUserTransaction(PooldLibPostgresBaseTest):
         self.user_a = self.create_user(n, '%s %s' % (n[:16], n[16:]))
         self.user_a_balance = self.create_balance(user=self.user_a, currency_code='USD')
 
-        self.community_a = self.create_community(uuid().hex, uuid().hex)
-        self.community_a_balance = self.create_balance(community=self.community_a, currency_code='USD')
+        self.campaign_a = self.create_campaign(uuid().hex, uuid().hex)
+        self.campaign_a_balance = self.create_balance(campaign=self.campaign_a, currency_code='USD')
 
     @tag('transact')
     def test_basic_transaction(self):

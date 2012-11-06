@@ -15,37 +15,37 @@ from pooldlib.postgresql import (Transaction as TransactionModel,
                                  Transfer as TransferModel,
                                  ExternalLedger as ExternalLedgerModel,
                                  InternalLedger as InternalLedgerModel,
-                                 CommunityGoalLedger as CommunityGoalLedgerModel)
+                                 CampaignGoalLedger as CampaignGoalLedgerModel)
 from pooldlib.exceptions import (InsufficentFundsTransferError,
                                  InsufficentFundsTransactionError)
 
 
 class Transact(object):
-    """``pooldlib`` API for working with user/user, user/community, etc transfers and
+    """``pooldlib`` API for working with user/user, user/campaign, etc transfers and
     (external) transactions. A user depositing funds in their poold account via stripe
     would be an example (external) transaction.
 
-    Example User to Community transfer:
+    Example User to Campaign transfer:
 
         >>> t = Transact()
-        >>> t.transfer(Decimal('25.0000'), destination=a_community, origin=a_user)
+        >>> t.transfer(Decimal('25.0000'), destination=a_campaign, origin=a_user)
         >>> if not t.verify(): raise TransactionError()
         >>> t.execute()
         >>> # (USD) Balance of a_user is decreased by $25.000
-        >>> # (USD) Balance of a_community is increased by $25.000
+        >>> # (USD) Balance of a_campaign is increased by $25.000
 
-    Example User to Community Goal transfer with Fee:
+    Example User to Campaign Goal transfer with Fee:
 
         >>> t = Transact()
         >>> currency = CurrencyModel.query.filter_by(code='USD').first()
         >>> fee = FeeModel.query.get(1)
-        >>> t.transfer_to_community_goal(Decimal('25.0000'), currency, a_community_goal, a_user)
+        >>> t.transfer_to_campaign_goal(Decimal('25.0000'), currency, a_campaign_goal, a_user)
         >>> t.transfer(Decimal('1.0000'), currency, destination=pooldin_co_user, origin=a_user, fee=fee)
         >>> if not t.verify(): raise TransactionError()
         >>> t.execute()
         >>> # (USD) Balance of a_user is decreased by $26.00.
-        >>> # (USD) Balance of a_community is increased by $25.00, and a
-        >>> # transfer of $25.00 is registered for a_community_goal.
+        >>> # (USD) Balance of a_campaign is increased by $25.00, and a
+        >>> # transfer of $25.00 is registered for a_campaign_goal.
 
     Example transaction usage:
 
@@ -63,21 +63,21 @@ class Transact(object):
     def __init__(self):
         self.reset()
 
-    def transfer_to_community_goal(self, amount, currency, community_goal, transfer_from, id=None):
+    def transfer_to_campaign_goal(self, amount, currency, campaign_goal, transfer_from, id=None):
         """Add a balance **transfer** to the `Transact` list. Use this method if the balance
-        transfer is contributing to a specific ``CommunityGoal``. Funds will be transfered *from*
-        ``transfer_from`` *to* ``community_goal.community`` and accounted for in the `CommunityGoalLedger`
-        for ``community_goal``.
+        transfer is contributing to a specific ``CampaignGoal``. Funds will be transfered *from*
+        ``transfer_from`` *to* ``campaign_goal.campaign`` and accounted for in the `CampaignGoalLedger`
+        for ``campaign_goal``.
 
         :param amount: Amount of currency to be transferred.
         :type amount: decimal.Decimal
         :param currency: Currency for which to execute the transfer.
         :type currency: :class:`pooldlib.postgresql.models.Currency`
-        :param community_goal: Instance of balance holding model which is receiving in the transfer.
-        :type community_goal: :class:`pooldlib.postgresql.models.CommunityGoal`
-        :param transfer_from: The balance holder which is contributing to ``community_goal``.
+        :param campaign_goal: Instance of balance holding model which is receiving in the transfer.
+        :type campaign_goal: :class:`pooldlib.postgresql.models.CampaignGoal`
+        :param transfer_from: The balance holder which is contributing to ``campaign_goal``.
         :type transfer_from: :class:`pooldlib.postgresql.models.User` or
-                             :class:`pooldlib.postgresql.models.Community`
+                             :class:`pooldlib.postgresql.models.Campaign`
         """
         if amount is None:
             raise TypeError("``amount`` cannot be None.")
@@ -85,27 +85,27 @@ class Transact(object):
             raise TypeError("``currency`` cannot be None.")
         self.transfer(amount,
                       currency,
-                      destination=community_goal.community,
+                      destination=campaign_goal.campaign,
                       origin=transfer_from,
                       id=id)
 
-        self._record_community_goal_transfer(community_goal, transfer_from, credit=amount)
+        self._record_campaign_goal_transfer(campaign_goal, transfer_from, credit=amount)
 
-    def transfer_from_community_goal(self, amount, currency, community_goal, transfer_to, id=None):
+    def transfer_from_campaign_goal(self, amount, currency, campaign_goal, transfer_to, id=None):
         """Add a balance **transfer** to the `Transact` list. Use this method if the balance
-        transfer is originating from a specific ``CommunityGoal``. Funds will be transfered *from*
-        ``community_goal.community`` *to* ``transfer_to`` and accounted for in the `CommunityGoalLedger`
-        for ``community_goal``.
+        transfer is originating from a specific ``CampaignGoal``. Funds will be transfered *from*
+        ``campaign_goal.campaign`` *to* ``transfer_to`` and accounted for in the `CampaignGoalLedger`
+        for ``campaign_goal``.
 
         :param amount: Amount of currency to be transferred.
         :type amount: decimal.Decimal
         :param currency: Currency for which to execute the transfer.
         :type currency: :class:`pooldlib.postgresql.models.Currency`
-        :param community_goal: Instance of balance holding model which is sending in the transfer.
-        :type community_goal: :class:`pooldlib.postgresql.models.CommunityGoal`
-        :param transfer_to: The balance holder which is recieving in the transfer from ``community_goal``.
+        :param campaign_goal: Instance of balance holding model which is sending in the transfer.
+        :type campaign_goal: :class:`pooldlib.postgresql.models.CampaignGoal`
+        :param transfer_to: The balance holder which is recieving in the transfer from ``campaign_goal``.
         :type transfer_to: :class:`pooldlib.postgresql.models.User` or
-                           :class:`pooldlib.postgresql.models.Community`
+                           :class:`pooldlib.postgresql.models.Campaign`
         """
         if amount is None:
             raise TypeError("``amount`` cannot be None.")
@@ -114,26 +114,26 @@ class Transact(object):
         self.transfer(amount,
                       currency,
                       destination=transfer_to,
-                      origin=community_goal.community,
+                      origin=campaign_goal.campaign,
                       id=id)
 
-        self._record_community_goal_transfer(community_goal, transfer_to, debit=amount)
+        self._record_campaign_goal_transfer(campaign_goal, transfer_to, debit=amount)
 
     def transfer(self, amount, currency, destination=None, origin=None, fee=None, id=None):
         """Add a balance **transfer** to the `Transact` list.  Valid transfers are:
 
             - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.User`
-            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Community`
-            - :class:`pooldlib.postgresql.models.Community` to :class:`pooldlib.postgresql.models.User`
+            - :class:`pooldlib.postgresql.models.User` to :class:`pooldlib.postgresql.models.Campaign`
+            - :class:`pooldlib.postgresql.models.Campaign` to :class:`pooldlib.postgresql.models.User`
 
         :param amount: Amount of currency to be transferred.
         :type amount: decimal.Decimal
         :param origin: Instance of balance holding model which is receiving in the transfer.
         :type origin: :class:`pooldlib.postgresql.models.User` or
-                      :class:`pooldlib.postgresql.models.Community`
+                      :class:`pooldlib.postgresql.models.Campaign`
         :param origin: Instance of balance holding model which is sending in the transfer.
         :type origin: :class:`pooldlib.postgresql.models.User` or
-                      :class:`pooldlib.postgresql.models.Community`
+                      :class:`pooldlib.postgresql.models.Campaign`
         :param currency: Currency type for which to execute the transfer.
         :type currency: :class:`pooldlib.postgresql.models.Currency` or string.
         :param fee: Fee associated with the transfer.
@@ -158,7 +158,7 @@ class Transact(object):
         :param balance_holder: Instance of the balance holding model which
                                is involved in the transaction.
         :type balance_holder: :class:`pooldlib.postgresql.models.User` or
-                              :class:`pooldlib.postgresql.models.Community`
+                              :class:`pooldlib.postgresql.models.Campaign`
         :param external_party: The third party facilitating the transaction (i.e. stripe, etc).
         :type external_party: string
         :param external_reference: Identifier provided by third party referencing transaction.
@@ -328,18 +328,18 @@ class Transact(object):
             el.debit = debit
         return el
 
-    def _record_community_goal_transfer(self, community_goal, transferrer, debit=None, credit=None):
-        cgl = CommunityGoalLedgerModel()
-        cgl.community_goal = community_goal
-        cgl.community = community_goal.community
+    def _record_campaign_goal_transfer(self, campaign_goal, transferrer, debit=None, credit=None):
+        cgl = CampaignGoalLedgerModel()
+        cgl.campaign_goal = campaign_goal
+        cgl.campaign = campaign_goal.campaign
         cgl.party_type = transferrer.__class__.__name__.lower()
         cgl.party_id = transferrer.id
         if debit is not None:
             cgl.debit = debit
-            self._transfers['debit'][community_goal.name] = cgl
+            self._transfers['debit'][campaign_goal.name] = cgl
         elif credit is not None:
             cgl.credit = credit
-            self._transfers['credit'][community_goal.name] = cgl
+            self._transfers['credit'][campaign_goal.name] = cgl
         else:
             msg = "One of ``debit`` or ``credit`` must be defined!"
             raise TypeError(msg)
