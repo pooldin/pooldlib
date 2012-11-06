@@ -11,7 +11,7 @@ from pooldlib.postgresql import (Transfer as TransferModel,
                                  CommunityGoalLedger as CommunityGoalLedgerModel,
                                  Currency as CurrencyModel,
                                  Fee as FeeModel)
-from pooldlib.api import Transact
+from pooldlib import Transact
 from pooldlib.exceptions import (InsufficentFundsTransferError,
                                  InsufficentFundsTransactionError)
 

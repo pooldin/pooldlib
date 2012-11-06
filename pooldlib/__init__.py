@@ -8,3 +8,5 @@ config = Config()
 
 DIR = os.path.abspath(__file__)
 DIR = os.path.dirname(DIR)
+
+from transact import Transact

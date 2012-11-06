@@ -19,6 +19,7 @@ from stripe import (AuthenticationError as StripeAuthenticationError,
                     CardError as StripeCardError)
 
 import pooldlib.log
+from pooldlib import Transact
 from pooldlib.payment import (StripeCustomer,
                               StripeUser,
                               QUANTIZE_CENTS,
@@ -584,7 +585,6 @@ def payment_to_community(user, community, amount, currency, fees, note=None, goa
              :class:`pooldlib.exception.StripeUserAccountError`
              :class:`pooldlib.exception.CommunityConfigurationError`
     """
-    from pooldlib.api import Transact
     transact_ledger = Transact()
     deposit_id, withdrawal_id = [uuid() for i in range(2)]
 
