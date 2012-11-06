@@ -446,7 +446,7 @@ def goal(goal_id, campaign=None, filter_inactive=False):
     return goal or None
 
 
-def add_goal(campaign, name, description, type, start=None, end=None, **kwargs):
+def add_goal(campaign, name, description, type, predecessor=None, start=None, end=None, **kwargs):
     """Add a goal to an existing campaign. ``name`` and ``description``
     are required.  Any key-value pair will be assumed to be metadata to be
     added to the goal instance.
@@ -475,6 +475,8 @@ def add_goal(campaign, name, description, type, start=None, end=None, **kwargs):
     goal.start = start or pytz.UTC.localize(datetime.utcnow())
     goal.end = end
     goal.type = type
+    if predecessor is not None:
+        goal.predecessor = predecessor
     campaign.goals.append(goal)
 
     with transaction_session() as session:
@@ -495,7 +497,7 @@ def add_goal(campaign, name, description, type, start=None, end=None, **kwargs):
     return goal
 
 
-def update_goal(update_goal, name=None, description=None, start=None, end=None, **kwargs):
+def update_goal(update_goal, name=None, predecessor=None, description=None, start=None, end=None, **kwargs):
     """Update an existing goal for a campaign. Only ``goal`` is required. All
     given goal properties will be updated. Any unspecified keyword arguments will
     be used to update the goal's metadata. To delete metadata for a campaign goal,
@@ -519,6 +521,8 @@ def update_goal(update_goal, name=None, description=None, start=None, end=None, 
         update_goal.start = start
     if end is not None:
         update_goal.end = end
+    if predecessor is not None:
+        goal.predecessor_id = predecessor.id
 
     update_meta = [m for m in update_goal.metadata if m.key in kwargs]
     create_meta = [(k, v) for (k, v) in kwargs.items() if not hasattr(update_goal, k)]

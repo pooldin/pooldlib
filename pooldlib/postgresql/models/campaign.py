@@ -86,6 +86,7 @@ class CampaignGoal(common.ConfigurationModel, common.ActiveMixin, common.Metadat
                                db.ForeignKey('campaign_goal.id'),
                                nullable=True)
     predecessor = db.relationship('CampaignGoal',
+                                  uselist=False,
                                   backref=db.backref('descendant', remote_side="CampaignGoal.id"))
 
     campaign = db.relationship('Campaign', backref='goals', lazy='select')

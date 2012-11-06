@@ -673,6 +673,34 @@ class TestAddCampaignGoal(PooldLibPostgresBaseTest):
         assert_equal(goal.mdata_key_one, u'mdata value one')
         assert_equal(goal.mdata_key_two, u'mdata value two')
 
+    @tag('campaign')
+    def test_add_goals_as_milestones(self):
+        names = ('Milestone One', 'Milestone Two', 'Milestone Three')
+        last_goal = None
+        for name in names:
+            last_goal = campaign.add_goal(self.campaign,
+                                          name,
+                                          name,
+                                          'project',
+                                          predecessor=last_goal)
+        goals = CampaignGoalModel.query.filter_by(campaign_id=self.com_id).order_by('campaign_goal.id').all()
+        assert_equal(3, len(goals))
+
+        check_last_goal = None
+        for (i, goal) in enumerate(goals):
+            assert_equal(names[i], goal.name)
+            assert_equal(names[i], goal.description)
+            if not check_last_goal:
+                assert_true(goal.predecessor is None)
+                assert_equal(goals[i + 1], goal.descendant)
+            else:
+                assert_equal(check_last_goal, goal.predecessor)
+                if i == 1:
+                    assert_equal(goals[i + 1], goal.descendant)
+                else:
+                    assert_true(goal.descendant is None)
+            check_last_goal = goal
+
 
 class TestCampaignGoalUserAssociation(PooldLibPostgresBaseTest):
 
