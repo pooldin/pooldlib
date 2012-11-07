@@ -550,7 +550,7 @@ def associate_stripe_authorization_code(user, auth_code, stripe_private_key, for
              :class:`pooldlib.exceptions.ExternalAPIUnavailableError`
     """
     try:
-        stripe_user = StripeUser(app_key=stripe_private_key)
+        stripe_user = StripeUser(api_key=stripe_private_key)
         # Keys in user_data: public_key, access_token, scope, user_id
         user_data = stripe_user.process_authorization_code(auth_code, user)
 
