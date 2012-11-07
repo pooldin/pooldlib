@@ -84,7 +84,7 @@ def total_after_fees(amount, fees=None, is_payer=True):
 
 class _StripeObject(object):
 
-    def __init__(self, api_key):
+    def __init__(self, api_key=None):
         self.api_key = api_key
 
     def _handle_error(self, error, user, params, raise_errors=True):
