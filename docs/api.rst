@@ -3,6 +3,8 @@
 pooldlib
 ========
 
+.. automodule:: pooldlib.transact
+   :members:
 
 Console
 -------
@@ -42,7 +44,7 @@ Models
 ^^^^^^
 
 .. autoclass:: pooldlib.postgresql.models.Balance
-.. autoclass:: pooldlib.postgresql.models.Community
+.. autoclass:: pooldlib.postgresql.models.Campaign
 .. autoclass:: pooldlib.postgresql.models.Currency
 .. autoclass:: pooldlib.postgresql.models.Fee
 .. autoclass:: pooldlib.postgresql.models.InternalLedger
@@ -102,15 +104,12 @@ API
     :members:
 .. automodule:: pooldlib.api.balance
     :members:
-.. automodule:: pooldlib.api.transact
-   :members:
 .. automodule:: pooldlib.api.user
+   :members:
+.. automodule:: pooldlib.api.campaign
    :members:
 .. automodule:: pooldlib.api.communication
    :members:
-.. automodule:: pooldlib.api.community
-   :members:
-
 
 Signals
 -------

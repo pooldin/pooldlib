@@ -132,8 +132,8 @@ def connections(user, as_organizer=True):
 
 
 # TODO :: Enable pagination
-def communities(user):
-    """Return all communities associated with the given user identifier.
+def campaigns(user):
+    """Return all campaigns associated with the given user identifier.
 
     :param user: User for which to return campaign connections.
     :type user: :class:`pooldlib.postgresql.models.User`

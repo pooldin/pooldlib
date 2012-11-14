@@ -27,15 +27,15 @@ from pooldlib.exceptions import (InvalidUserRoleError,
 
 
 # TODO :: Enable pagination
-def communities(campaign_ids, filter_inactive=True):
-    """Return all communities with ids in ``campaign_ids``. If ``filter_inactive``
+def campaigns(campaign_ids, filter_inactive=True):
+    """Return all campaigns with ids in ``campaign_ids``. If ``filter_inactive``
     is `True`, return only those whos `start` and `endtime` make it currently active.
-    If ``campaign_ids`` is `None`, return all communities.
+    If ``campaign_ids`` is `None`, return all campaigns.
 
     :param campaign_ids: List of campaign IDs to return. Pass `None` to return
-                          **all** communities.
+                          **all** campaigns.
     :type campaign_id: list of type `long`.
-    :param filter_inactive: Return communities only if they are currently active,
+    :param filter_inactive: Return campaigns only if they are currently active,
                             that is if the current datetime is not outside of
                             the campaign's start and end times. Default `False`.
     :type filter_inactive: boolean
@@ -214,7 +214,7 @@ def update(campaign, name=None, description=None, **kwargs):
 def disable(campaign):
     """Disable a specified campaign. This will prevent it from being returned
     by calls to :func:`pooldlib.api.campaign.get` and
-    :func:`pooldlib.api.campaign.communities`
+    :func:`pooldlib.api.campaign.campaigns`
 
     :param campaign: The campaign to disable.
     :type campaign: :class:`pooldlib.postgresql.models.Campaign`
@@ -237,7 +237,7 @@ def balances(campaign):
 
 
 def balance(campaign, currency, get_or_create=False, for_update=False):
-    """Return a communities balance for ``currency``, if ``get_or_create=True``, if
+    """Return a campaigns balance for ``currency``, if ``get_or_create=True``, if
     an existing balance isn't found, one will be created and returned.
 
     :param campaign: Campaign for which to retrieve balance.
@@ -274,7 +274,7 @@ def associate_user(campaign, user, role, goal_participation):
     :type user: :class:`pooldlib.postgresql.models.User`
     :param role: The role to assign the user (either `organizer` or `participant`)
     :type role: string
-    :param goal_participation: The participation description for the communities goals.
+    :param goal_participation: The participation description for the campaign goals.
                                One of `participating`, `nonparticipating`, `opted-in` or `opted-out`
                                (See :func:`pooldlib.api.campaign.associate_user_with_goal`)
     :type goal_participation: string

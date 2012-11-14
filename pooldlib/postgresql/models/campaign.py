@@ -21,7 +21,7 @@ class CampaignMeta(common.Model, common.EnabledMixin, common.KeyValueMixin):
 class CampaignAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMixin, common.EnabledMixin, common.FieldUpdateMixin):
     __tablename__ = 'campaign_association'
 
-    user = db.relationship('User', backref='communities', lazy='select')
+    user = db.relationship('User', backref='campaigns', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
                         nullable=False,

@@ -64,13 +64,13 @@ class TestGetCampaign(PooldLibPostgresBaseTest):
         assert_true(ret is None)
 
 
-class TestGetCommunities(PooldLibPostgresBaseTest):
+class TestGetCampaigns(PooldLibPostgresBaseTest):
 
     def setUp(self):
-        super(TestGetCommunities, self).setUp()
+        super(TestGetCampaigns, self).setUp()
 
-        self.com_one_name = 'Test Get Communities One'
-        self.com_one_description = 'To Test Get Communities: One'
+        self.com_one_name = 'Test Get Campaigns One'
+        self.com_one_description = 'To Test Get Campaigns: One'
         self.com_one_start = datetime.utcnow() - timedelta(days=3)
         self.com_one_end = self.com_one_start + timedelta(days=2)
         self.campaign_one = self.create_campaign(self.com_one_name,
@@ -79,8 +79,8 @@ class TestGetCommunities(PooldLibPostgresBaseTest):
                                                  self.com_one_end)
         self.com_one_id = self.campaign_one.id
 
-        self.com_two_name = 'Test Get Communities Two'
-        self.com_two_description = 'To Test Get Communities: Two'
+        self.com_two_name = 'Test Get Campaigns Two'
+        self.com_two_description = 'To Test Get Campaigns: Two'
         self.com_two_start = datetime.utcnow() - timedelta(days=1)
         self.com_two_end = self.com_two_start + timedelta(days=2)
         self.campaign_two = self.create_campaign(self.com_two_name,
@@ -89,8 +89,8 @@ class TestGetCommunities(PooldLibPostgresBaseTest):
                                                  self.com_two_end)
         self.com_two_id = self.campaign_two.id
 
-        self.com_three_name = 'Test Get Communities Three'
-        self.com_three_description = 'To Test Get Communities: Three'
+        self.com_three_name = 'Test Get Campaigns Three'
+        self.com_three_description = 'To Test Get Campaigns: Three'
         self.com_three_start = datetime.utcnow() + timedelta(days=2)
         self.com_three_end = self.com_three_start + timedelta(days=2)
         self.campaign_three = self.create_campaign(self.com_three_name,
@@ -100,34 +100,34 @@ class TestGetCommunities(PooldLibPostgresBaseTest):
         self.com_three_id = self.campaign_three.id
 
     @tag('campaign')
-    def test_get_all_communities(self):
-        comms = campaign.communities(None, filter_inactive=False)
+    def test_get_all_campaigns(self):
+        comms = campaign.campaigns(None, filter_inactive=False)
         # At this point we don't know the current state of the db, so there
-        # should be a minimum of 3 communities existing.
+        # should be a minimum of 3 campaigns existing.
         assert_true(3 <= len(comms))
 
     @tag('campaign')
-    def test_get_all_communities_exclude_inactive(self):
-        comms = campaign.communities(None, filter_inactive=True)
+    def test_get_all_campaigns_exclude_inactive(self):
+        comms = campaign.campaigns(None, filter_inactive=True)
         # At this point we don't know the current state of the db, so there
         # should be a minimum of 1 active campaign existing.
         assert_true(1 <= len(comms))
 
     @tag('campaign')
-    def test_get_all_communities_in_list(self):
-        comms = campaign.communities([self.com_one_id, self.com_two_id, self.com_three_id],
-                                     filter_inactive=False)
+    def test_get_all_campaigns_in_list(self):
+        comms = campaign.campaigns([self.com_one_id, self.com_two_id, self.com_three_id],
+                                   filter_inactive=False)
         assert_equal(3, len(comms))
 
     @tag('campaign')
-    def test_get_communities_exclude_inactive(self):
-        comms = campaign.communities([self.com_one_id, self.com_two_id, self.com_three_id],
-                                     filter_inactive=True)
+    def test_get_campaigns_exclude_inactive(self):
+        comms = campaign.campaigns([self.com_one_id, self.com_two_id, self.com_three_id],
+                                   filter_inactive=True)
         assert_equal(1, len(comms))
 
     @tag('campaign')
-    def test_get_communities_exclude_all_inactive(self):
-        comms = campaign.communities([self.com_one_id, self.com_three_id])
+    def test_get_campaigns_exclude_all_inactive(self):
+        comms = campaign.campaigns([self.com_one_id, self.com_three_id])
         assert_equal(0, len(comms))
 
 
@@ -206,8 +206,8 @@ class TestCampaignAssociateUser(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestCampaignAssociateUser, self).setUp()
-        self.com_name = 'Test Association User With Communities'
-        self.com_description = 'To Test Association User With Communities'
+        self.com_name = 'Test Association User With Campaigns'
+        self.com_description = 'To Test Association User With Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
@@ -259,8 +259,8 @@ class TestDisableCampaign(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestDisableCampaign, self).setUp()
-        self.com_name = 'Test Association User With Communities'
-        self.com_description = 'To Test Association User With Communities'
+        self.com_name = 'Test Association User With Campaigns'
+        self.com_description = 'To Test Association User With Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
@@ -286,8 +286,8 @@ class TestGetAssociations(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestGetAssociations, self).setUp()
-        self.com_name = 'Test Association User With Communities'
-        self.com_description = 'To Test Association User With Communities'
+        self.com_name = 'Test Association User With Campaigns'
+        self.com_description = 'To Test Association User With Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
@@ -336,8 +336,8 @@ class TestCampaignUpdateUserRole(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestCampaignUpdateUserRole, self).setUp()
-        self.com_name = 'Test Association User With Communities'
-        self.com_description = 'To Test Association User With Communities'
+        self.com_name = 'Test Association User With Campaigns'
+        self.com_description = 'To Test Association User With Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
@@ -370,8 +370,8 @@ class TestCampaignDisassociateUser(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestCampaignDisassociateUser, self).setUp()
-        self.com_name = 'Test Association User With Communities'
-        self.com_description = 'To Test Association User With Communities'
+        self.com_name = 'Test Association User With Campaigns'
+        self.com_description = 'To Test Association User With Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
