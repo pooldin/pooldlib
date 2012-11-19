@@ -32,6 +32,8 @@ class CampaignAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMixin, 
                             nullable=False,
                             primary_key=True)
     role = db.Column(db.Enum('organizer', 'participant', name='campaign_role_enum'))
+    pledge = db.Column(db.DECIMAL(precision=24, scale=4),
+                       nullable=True)
 
     __table_args__ = (db.UniqueConstraint(user_id, campaign_id), {})
 
@@ -58,6 +60,8 @@ class CampaignGoalAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMix
                                       'participating',
                                       'nonparticipating',
                                       name='participation_enum'))
+    pledge = db.Column(db.DECIMAL(precision=24, scale=4),
+                       nullable=True)
 
     __table_args__ = (db.UniqueConstraint(user_id, campaign_id, campaign_goal_id), {})
 
