@@ -13,6 +13,7 @@ from sqlalchemy.exc import (DataError as SQLAlchemyDataError,
 
 from pooldlib.sqlalchemy import transaction_session
 from pooldlib.postgresql import (Campaign as CampaignModel,
+                                 Invitee as InviteeModel,
                                  CampaignGoal as CampaignGoalModel,
                                  CampaignMeta as CampaignMetaModel,
                                  CampaignGoalMeta as CampaignGoalMetaModel,
@@ -263,6 +264,40 @@ def balance(campaign, currency, get_or_create=False, for_update=False):
     if isinstance(b, (tuple, list)):
         b = b[0]
     return b or None
+
+
+def add_invites(campaign, emails):
+    invites = list()
+    for email in emails:
+        i = add_invite(campaign, email)
+        if i is not None:
+            invites.append(i)
+    return invites
+
+
+def add_invite(campaign, email):
+    from pooldlib.api import user
+    usr = user.get_by_email(email)
+
+    q = InviteeModel.query.filter_by(campaign_id=campaign.id)
+    if usr is not None:
+        q = q.filter_by(user_id=usr.id)
+    else:
+        q = q.filter_by(email=email)
+    existing_invite = q.first()
+    if existing_invite is not None:
+        return None
+
+    invite = InviteeModel()
+    invite.email = email
+    invite.campaign_id = campaign.id
+    if usr is not None:
+        invite.user_id = usr.id
+
+    with transaction_session() as session:
+        session.add(invite)
+        session.commit()
+    return invite
 
 
 def associate_user(campaign, user, role, goal_participation):

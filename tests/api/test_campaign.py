@@ -9,6 +9,7 @@ from pooldlib.exceptions import (InvalidUserRoleError,
                                  DuplicateCampaignGoalUserAssociationError)
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (Campaign as CampaignModel,
+                                 Invitee as InviteeModel,
                                  CampaignMeta as CampaignMetaModel,
                                  CampaignGoal as CampaignGoalModel,
                                  CampaignGoalAssociation as CampaignGoalAssociationModel,
@@ -200,6 +201,69 @@ class TestCreateCampaign(PooldLibPostgresBaseTest):
         assert_equal(1, len(ass))
         ass = ass[0]
         assert_equal('organizer', ass.role)
+
+
+class TestCampaignInvite(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestCampaignInvite, self).setUp()
+        self.com_name = 'Test Campaign Invite'
+        self.com_description = 'To Test Campaign Invite'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.campaign = self.create_campaign(self.com_name,
+                                             self.com_description,
+                                             self.com_start,
+                                             self.com_end)
+        self.com_id = self.campaign.id
+
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+
+    @tag('campaign')
+    def test_invite_non_user(self):
+        email = 'johnny-left-out@example.com'
+        campaign.add_invite(self.campaign, email)
+        invite = InviteeModel.query.filter_by(campaign_id=self.campaign.id)\
+                                   .filter_by(email=email).all()
+
+        assert_equal(1, len(invite))
+        invite = invite[0]
+        assert_equal(email, invite.email)
+        assert_equal(self.campaign.id, invite.campaign_id)
+        assert_true(invite.user_id is None)
+
+    @tag('campaign')
+    def test_invite_non_user_duplicate(self):
+        email = 'johnny-left-out@example.com'
+        campaign.add_invite(self.campaign, email)
+        campaign.add_invite(self.campaign, email)
+        invite = InviteeModel.query.filter_by(campaign_id=self.campaign.id)\
+                                   .filter_by(email=email).all()
+
+        assert_equal(1, len(invite))
+        invite = invite[0]
+        assert_equal(email, invite.email)
+        assert_equal(self.campaign.id, invite.campaign_id)
+        assert_true(invite.user_id is None)
+
+    @tag('campaign')
+    def test_invite_non_users(self):
+        emails = ['johnny-left-out-again@example.com',
+                  'johnny-left-out-and-again@example.com',
+                  'johnny-left-out-and-and-again@example.com']
+        campaign.add_invites(self.campaign, emails)
+        for email in emails:
+            invite = InviteeModel.query.filter_by(campaign_id=self.campaign.id)\
+                                       .filter_by(email=email).all()
+            assert_equal(1, len(invite))
+            invite = invite[0]
+            assert_true(invite is not None)
+            assert_equal(email, invite.email)
+            assert_equal(self.campaign.id, invite.campaign_id)
+            assert_true(invite.user_id is None)
 
 
 class TestCampaignAssociateUser(PooldLibPostgresBaseTest):

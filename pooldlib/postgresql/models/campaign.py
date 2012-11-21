@@ -78,7 +78,7 @@ class Invitee(common.UUIDMixin, common.EnabledMixin, common.Model):
     user = db.relationship('User', backref='invitations', lazy='select')
     user_id = db.Column(db.BigInteger(unsigned=True),
                         db.ForeignKey('user.id'),
-                        nullable=False)
+                        nullable=True)
 
     __table_args__ = (db.UniqueConstraint(campaign_id, email), {})
 
