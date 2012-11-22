@@ -67,6 +67,8 @@ class Email(object):
         self.disclose_recipients = disclose_recipients
         self._recipient_address = hidden_recipients_address
         self._recipients = list()
+        self._cc_recipients = list()
+        self._bcc_recipients = list()
         self.msg_root = None
         self._host = host
         self._port = port
@@ -185,6 +187,40 @@ class Email(object):
                       'of type str or pooldlib.postgres.User'
                 raise TypeError(msg)
 
+    def add_cc(self, recipient):
+        """Add a carbon copy recipient.  Recipient can be either email
+        addresses as strings, or :class:`pooldlib.postgres.models.User`
+        instances.  User object instances expected to have email addresses
+        associated with them.
+
+        :param recipient: Recipient to add to the recipient list.
+        :type recipient: list of stri
+        """
+        if not isinstance(recipient, basestring):
+            user = recipient
+            recipient = '%s ' % user.name if user.name is not None else ''
+            recipient += '<%s>' % user.email
+        self._cc_recipients.append(recipient)\
+            if recipient not in self._cc_recipients\
+            else None  # else required for correct python syntax
+
+    def add_bcc(self, recipient):
+        """Add a blind carbon copy recipient.  Recipient can be either email
+        addresses as strings, or :class:`pooldlib.postgres.models.User`
+        instances.  User object instances expected to have email addresses
+        associated with them.
+
+        :param recipient: Recipient to add to the recipient list.
+        :type recipient: list of stri
+        """
+        if not isinstance(recipient, basestring):
+            user = recipient
+            recipient = '%s ' % user.name if user.name is not None else ''
+            recipient += '<%s>' % user.email
+        self._bcc_recipients.append(recipient)\
+            if recipient not in self._bcc_recipients\
+            else None  # else required for correct python syntax
+
     def send(self):
         """Send the email!
 
@@ -217,6 +253,13 @@ class Email(object):
             self.msg_root['To'] = to_string
         else:
             self.msg_root['To'] = self._recipient_address or self.sender
+
+        if self._cc_recipients:
+            cc_string = ', '.join(self._cc_recipients)
+            self.msg_root['CC'] = cc_string
+            self.recipients.extend(self._cc_recipients)
+        if self._bcc_recipients:
+            self.recipients.extend(self._bcc_recipients)
 
         self.server.sendmail(self.sender, self.recipients, self.msg_root.as_string())
 
