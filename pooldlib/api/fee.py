@@ -6,6 +6,7 @@ pooldlib.api.fee
 
 """
 from pooldlib.postgresql.models import Fee as FeeModel
+from pooldlib.payment import total_after_fees as _total_after_fees
 
 
 def get(fee_name, fee_names=None):
@@ -32,3 +33,21 @@ def get(fee_name, fee_names=None):
                          .filter(FeeModel.name.in_(names))\
                          .all()
     return fees
+
+
+def calculate(fees, amount):
+    """Calculate fees associated with a given amount, for a given list of fees.
+
+    :param fees: A list of fees to use in the calculation.
+    :type fees: list of :class:`pooldlib.postgresql.models.Fee`
+    :param amount: The base amount to use in the calculation.
+    :type amount: decimal.Decimal
+
+    :returns: dictionary, structure: {'charge': { 'initial': the passed in fee amount: Decimal,
+                                                  'final': The total charge after fees are applied: Decimal},
+                                      'fees': [{'name': First fee name,
+                                                'fee': The calculated fee amount}
+                                               ...]}
+    """
+    total = _total_after_fees(amount, fees=fees)
+    return total
