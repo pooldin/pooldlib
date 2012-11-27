@@ -15,8 +15,8 @@ def get(fee_name, fee_names=None):
 
     :param fee_name: The name corresponding to the desired Fee.
     :type fee_name: string
-    :param fee_name: A list of names corresponding to the desired Fees.
-    :type fee_name: list of strings
+    :param fee_names: A list of names corresponding to the desired Fees.
+    :type fee_names: list of strings
 
     :returns: list of :class:`pooldlib.postgresql.models.Fee`
     """
