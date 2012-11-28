@@ -6,7 +6,6 @@ pooldlib.api.campaign
 
 """
 import pytz
-import time
 from datetime import datetime
 
 from sqlalchemy.exc import (DataError as SQLAlchemyDataError,
@@ -340,7 +339,7 @@ def associate_user(campaign, user, role, goal_participation, pledge=None):
     update_invitee = None
     for invitee in campaign.invitees:
         if invitee.user == user or invitee.email == user.email:
-            invitee.accepted = time.time()
+            invitee.accepted = pytz.UTC.localize(datetime.utcnow())
             invitee.user = user
             update_invitee = invitee
 
