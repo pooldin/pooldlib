@@ -194,7 +194,7 @@ def update(campaign, name=None, description=None, **kwargs):
         m = CampaignMetaModel()
         m.key = k
         m.value = v
-        m.campaign_id = campaign
+        m.campaign_id = campaign.id
         meta_delta.append(m)
 
     with transaction_session() as session:
