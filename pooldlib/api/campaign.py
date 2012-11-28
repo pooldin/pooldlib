@@ -300,7 +300,7 @@ def add_invite(campaign, email):
     return invite
 
 
-def associate_user(campaign, user, role, goal_participation):
+def associate_user(campaign, user, role, goal_participation, pledge=None):
     """Associate a user with a campaign filling a specified role.
 
     :param campaign: The campaign with which to associate the user.
@@ -328,8 +328,12 @@ def associate_user(campaign, user, role, goal_participation):
     ca.campaign = campaign
     ca.user = user
     ca.role = role
+    goal_pledge = None
+    if pledge is not None:
+        ca.pledge = pledge
+        goal_pledge = pledge / len(campaign_goals)
     for goal in campaign_goals:
-        associate_user_with_goal(goal, user, goal_participation)
+        associate_user_with_goal(goal, user, goal_participation, pledge=goal_pledge)
 
     with transaction_session() as session:
         session.add(ca)
@@ -606,7 +610,7 @@ def disable_goal(disable_goal):
         session.add(disable_goal)
 
 
-def associate_user_with_goal(campaign_goal, user, participation):
+def associate_user_with_goal(campaign_goal, user, participation, pledge=None):
     """Associate given user with ``campaign_goal``. The association will be described by
     ``participation``, which can be one of 'opted-in', 'opted-out', 'participating',
     'nonparticipating'. The values 'participating' and 'nonparticipating' should only be used
@@ -622,6 +626,7 @@ def associate_user_with_goal(campaign_goal, user, participation):
     cga.campaign_goal = campaign_goal
     cga.user = user
     cga.participation = participation
+    cga.pledge = pledge
 
     with transaction_session() as session:
         session.add(cga)
