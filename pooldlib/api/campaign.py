@@ -6,6 +6,7 @@ pooldlib.api.campaign
 
 """
 import pytz
+import time
 from datetime import datetime
 
 from sqlalchemy.exc import (DataError as SQLAlchemyDataError,
@@ -335,8 +336,18 @@ def associate_user(campaign, user, role, goal_participation, pledge=None):
     for goal in campaign_goals:
         associate_user_with_goal(goal, user, goal_participation, pledge=goal_pledge)
 
+    # Check to see if this user was invited and mark them as accepted
+    update_invitee = None
+    for invitee in campaign.invitees:
+        if invitee.user == user or invitee.email == user.email:
+            invitee.accepted = time.time()
+            invitee.user = user
+            update_invitee = invitee
+
     with transaction_session() as session:
         session.add(ca)
+        if update_invitee is not None:
+            session.add(update_invitee)
         try:
             session.commit()
         except SQLAlchemyDataError:
