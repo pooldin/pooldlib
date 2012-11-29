@@ -331,7 +331,8 @@ def associate_user(campaign, user, role, goal_participation, pledge=None):
     goal_pledge = None
     if pledge is not None:
         ca.pledge = pledge
-        goal_pledge = pledge / len(campaign_goals)
+        if campaign_goals:
+            goal_pledge = pledge / len(campaign_goals)
     for goal in campaign_goals:
         associate_user_with_goal(goal, user, goal_participation, pledge=goal_pledge)
 
