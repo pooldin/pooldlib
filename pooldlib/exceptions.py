@@ -169,8 +169,20 @@ class UnknownCampaignAssociationError(CampaignAPIError):
     """
 
 
+class UnknownCampaignGoalAssociationError(CampaignAPIError):
+    """Raised when an attempt is made to access an unknown user/campaign-goal
+    association.
+    """
+
+
 class CampaignConfigurationError(CampaignAPIError):
     """Raised when a problem is encountered with a campaign configuration.
+    """
+
+
+class PreviousUserContributionError(CampaignAPIError):
+    """Raised when a CampaignAssociation is updated with a new pledge amount
+    and there is a pledge already associated with the CampaignAssociation.
     """
 
 

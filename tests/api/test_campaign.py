@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from decimal import Decimal
 import pytz
 from uuid import uuid4 as uuid
 from nose.tools import raises, assert_equal, assert_true, assert_false
@@ -6,7 +7,8 @@ from nose.tools import raises, assert_equal, assert_true, assert_false
 from pooldlib.exceptions import (InvalidUserRoleError,
                                  InvalidGoalParticipationNameError,
                                  DuplicateCampaignUserAssociationError,
-                                 DuplicateCampaignGoalUserAssociationError)
+                                 DuplicateCampaignGoalUserAssociationError,
+                                 PreviousUserContributionError)
 from pooldlib.postgresql import db
 from pooldlib.postgresql import (Campaign as CampaignModel,
                                  Invitee as InviteeModel,
@@ -400,8 +402,8 @@ class TestCampaignUpdateUserRole(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestCampaignUpdateUserRole, self).setUp()
-        self.com_name = 'Test Association User With Campaigns'
-        self.com_description = 'To Test Association User With Campaigns'
+        self.com_name = 'Test Campaign Association User Role'
+        self.com_description = 'To Test Campaign Association User Role'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,
@@ -422,7 +424,7 @@ class TestCampaignUpdateUserRole(PooldLibPostgresBaseTest):
                                                        user_id=self.user.id).first()
         assert_true(ass is not None)
         assert_equal('organizer', ass.role)
-        campaign.update_user_association(self.campaign, self.user, 'participant')
+        campaign.update_user_association(self.campaign, self.user, role='participant')
 
         ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
                                                        user_id=self.user.id).first()
@@ -430,12 +432,160 @@ class TestCampaignUpdateUserRole(PooldLibPostgresBaseTest):
         assert_equal('participant', ass.role)
 
 
+class TestCampaignUpdateUserPledge(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestCampaignUpdateUserPledge, self).setUp()
+        self.com_name = 'Test Update Campaign Association Pledge'
+        self.com_description = 'To Test Update Campaign Association Pledge'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.campaign = self.create_campaign(self.com_name,
+                                             self.com_description,
+                                             self.com_start,
+                                             self.com_end)
+        self.com_id = self.campaign.id
+
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+        self.create_campaign_association(self.campaign, self.user, 'organizer')
+
+    @tag('campaign')
+    def test_update_new_pledge(self):
+        ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                       user_id=self.user.id).first()
+        assert_true(ass is not None)
+        assert_true(ass.pledge is None)
+        pledge = Decimal('100.00')
+        campaign.update_user_association(self.campaign, self.user, pledge=pledge)
+
+        ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                       user_id=self.user.id).first()
+        assert_true(ass is not None)
+        assert_equal(pledge, ass.pledge)
+
+
+class TestCampaignUpdateUserPledgeWithGoals(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestCampaignUpdateUserPledgeWithGoals, self).setUp()
+        self.com_name = 'Test Update Campaign Association Pledge With Goals'
+        self.com_description = 'To Test Update Campaign Association Pledge With Goals'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.campaign = self.create_campaign(self.com_name,
+                                             self.com_description,
+                                             self.com_start,
+                                             self.com_end)
+        self.com_id = self.campaign.id
+
+        now = datetime.utcnow()
+        self.goal_one = self.create_campaign_goal(self.com_id,
+                                                  'Goal One',
+                                                  'Its Goal One',
+                                                  'project',
+                                                  start=now - timedelta(days=1),
+                                                  end=now + timedelta(days=1))
+        self.goal_two = self.create_campaign_goal(self.com_id,
+                                                  'Goal Two',
+                                                  'Its Goal Two',
+                                                  'project',
+                                                  start=now - timedelta(days=1),
+                                                  end=now + timedelta(days=1))
+
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+        self.create_campaign_association(self.campaign, self.user, 'organizer')
+        self.create_campaign_goal_association(self.campaign, self.goal_one, self.user, 'participating')
+        self.create_campaign_goal_association(self.campaign, self.goal_two, self.user, 'participating')
+
+    @tag('campaign')
+    def test_update_new_pledge(self):
+        ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                       user_id=self.user.id).first()
+        goal_asses = CampaignGoalAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                                  user_id=self.user.id).all()
+
+        assert_true(ass is not None)
+        assert_true(ass.pledge is None)
+        for goal_ass in goal_asses:
+            assert_true(goal_ass.pledge is None)
+        pledge = Decimal('100.00')
+        campaign.update_user_association(self.campaign, self.user, pledge=pledge)
+
+        ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                       user_id=self.user.id).first()
+        goal_asses = CampaignGoalAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                                  user_id=self.user.id).all()
+
+        assert_true(ass is not None)
+        assert_equal(pledge, ass.pledge)
+        for goal_ass in goal_asses:
+            assert_equal(Decimal('50.00'), goal_ass.pledge)
+
+
+class TestCampaignUpdateUserPledgeWithGoalsWithPreviousPledge(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestCampaignUpdateUserPledgeWithGoalsWithPreviousPledge, self).setUp()
+        self.com_name = 'Test Update Campaign Association Pledge With Goals'
+        self.com_description = 'To Test Update Campaign Association Pledge With Goals'
+        self.com_start = datetime.utcnow() - timedelta(days=2)
+        self.com_end = self.com_start + timedelta(days=4)
+        self.campaign = self.create_campaign(self.com_name,
+                                             self.com_description,
+                                             self.com_start,
+                                             self.com_end)
+        self.com_id = self.campaign.id
+
+        now = datetime.utcnow()
+        self.goal_one = self.create_campaign_goal(self.com_id,
+                                                  'Goal One',
+                                                  'Its Goal One',
+                                                  'project',
+                                                  start=now - timedelta(days=1),
+                                                  end=now + timedelta(days=1))
+        self.goal_two = self.create_campaign_goal(self.com_id,
+                                                  'Goal Two',
+                                                  'Its Goal Two',
+                                                  'project',
+                                                  start=now - timedelta(days=1),
+                                                  end=now + timedelta(days=1))
+
+        self.username = uuid().hex
+        self.name = '%s %s' % (self.username[:16], self.username[16:])
+        self.email = '%s@example.com' % self.username
+        self.user = self.create_user(self.username, self.name, self.email)
+        self.create_campaign_association(self.campaign, self.user, 'organizer', pledge=Decimal('100.00'))
+        self.create_campaign_goal_association(self.campaign, self.goal_one, self.user, 'participating', pledge=Decimal('50.00'))
+        self.create_campaign_goal_association(self.campaign, self.goal_two, self.user, 'participating', pledge=Decimal('50.00'))
+
+    @tag('campaign')
+    @raises(PreviousUserContributionError)
+    def test_update_pledge(self):
+        ass = CampaignAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                       user_id=self.user.id).first()
+        goal_asses = CampaignGoalAssociationModel.query.filter_by(campaign_id=self.com_id,
+                                                                  user_id=self.user.id).all()
+
+        assert_true(ass is not None)
+        assert_equal(Decimal('100.00'), ass.pledge)
+        for goal_ass in goal_asses:
+            assert_equal(Decimal('50.00'), goal_ass.pledge)
+        pledge = Decimal('100.00')
+        campaign.update_user_association(self.campaign, self.user, pledge=pledge)
+
+
 class TestCampaignDisassociateUser(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestCampaignDisassociateUser, self).setUp()
-        self.com_name = 'Test Association User With Campaigns'
-        self.com_description = 'To Test Association User With Campaigns'
+        self.com_name = 'Test Disassociation User From Campaigns'
+        self.com_description = 'To Test Disassociation User From Campaigns'
         self.com_start = datetime.utcnow() - timedelta(days=2)
         self.com_end = self.com_start + timedelta(days=4)
         self.campaign = self.create_campaign(self.com_name,

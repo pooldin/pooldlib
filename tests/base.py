@@ -10,6 +10,7 @@ from pooldlib.postgresql import (db,
                                  Campaign,
                                  CampaignMeta,
                                  CampaignAssociation,
+                                 CampaignGoalAssociation,
                                  CampaignGoal,
                                  CampaignGoalMeta)
 
@@ -71,13 +72,26 @@ class PooldLibBaseTest(unittest.TestCase):
             cm.campaign_id = campaign.id
             self.commit_model(cm)
 
-    def create_campaign_association(self, campaign, user, role):
+    def create_campaign_association(self, campaign, user, role, pledge=None):
         ca = CampaignAssociation()
         ca.user_id = user.id
         ca.campaign_id = campaign.id
         ca.role = role
+        if pledge is not None:
+            ca.pledge = pledge
         self.commit_model(ca)
         return ca
+
+    def create_campaign_goal_association(self, campaign, goal, user, participation, pledge=None):
+        cga = CampaignGoalAssociation()
+        cga.user_id = user.id
+        cga.campaign_id = campaign.id
+        cga.campaign_goal_id = goal.id
+        cga.participation = participation
+        if pledge is not None:
+            cga.pledge = pledge
+        self.commit_model(cga)
+        return cga
 
     def create_campaign_goal(self, campaign, name, description, type=None, start=None, end=None):
         if type is None:

@@ -46,6 +46,7 @@ class CampaignGoalAssociation(db.Model, common.TrackIPMixin, common.TrackTimeMix
                         db.ForeignKey('user.id'),
                         nullable=False,
                         primary_key=True)
+    campaign = db.relationship('Campaign', backref='goal_associations', lazy='select')
     campaign_id = db.Column(db.BigInteger(unsigned=True),
                             db.ForeignKey('campaign.id'),
                             nullable=False,

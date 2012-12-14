@@ -23,8 +23,10 @@ from pooldlib.api import balance as _balance
 from pooldlib.exceptions import (InvalidUserRoleError,
                                  InvalidGoalParticipationNameError,
                                  UnknownCampaignAssociationError,
+                                 UnknownCampaignGoalAssociationError,
                                  DuplicateCampaignUserAssociationError,
-                                 DuplicateCampaignGoalUserAssociationError)
+                                 DuplicateCampaignGoalUserAssociationError,
+                                 PreviousUserContributionError)
 
 
 # TODO :: Enable pagination
@@ -377,7 +379,7 @@ def get_associations(campaign, user=None):
     return q.all()
 
 
-def update_user_association(campaign, user, role):
+def update_user_association(campaign, user, role=None, pledge=None, only_active_goals=True):
     """Update an existing User/Campaign association to change the
     specified user's role in the campaign.
 
@@ -385,8 +387,10 @@ def update_user_association(campaign, user, role):
     :type campaign: :class:`pooldlib.postgresql.models.Campaign`
     :param user: The user for which to update a campaign association.
     :type user: :class:`pooldlib.postgresql.models.User`
-    :param role: The role to assign the user (either `organizer` or `participant`)
+    :param role: The role to assign the user, either `organizer` or `participant` (optional).
     :type role: string
+    :param pledge: The amount the user has pledged to the campaign (optional).
+    :type pledge: Decimal
 
     :raises: :class:`pooldlib.exceptions.InvalidUserRoleError`
              :class:`pooldlib.exceptions.UnknownCampaignAssociationError`
@@ -399,7 +403,23 @@ def update_user_association(campaign, user, role):
               "one with campaign.associate_user()."
         raise UnknownCampaignAssociationError(msg)
     ca = ca[0]
-    if ca.update_field('role', role):
+    updated = False
+    if role is not None:
+        updated = ca.update_field('role', role)
+    if pledge is not None:
+        if ca.pledge is not None:
+            msg = "User %s has previously contributed to campaign '%s'"
+            msg %= (user.username, campaign.name)
+            raise PreviousUserContributionError(msg)
+        updated = ca.update_field('pledge', pledge)
+        goal_pledge = None
+        campaign_goals = goals(campaign, filter_inactive=only_active_goals)
+        if campaign_goals:
+            goal_pledge = pledge / len(campaign_goals)
+        for goal in campaign_goals:
+            update_user_goal_association(goal, user, pledge=goal_pledge)
+
+    if updated:
         with transaction_session() as session:
             try:
                 session.commit()
@@ -629,6 +649,15 @@ def associate_user_with_goal(campaign_goal, user, participation, pledge=None):
     appropriate descriptor of 'opted-in' or 'opted-out'. These rules should be followed precisely
     for reporting purposes.
 
+    :param campaign: The campaign which to associate the user.
+    :type campaign: :class:`pooldlib.postgresql.models.Campaign`
+    :param user: The user to associate.
+    :type user: :class:`pooldlib.postgresql.models.User`
+    :param role: The role to assign the user (either `organizer` or `participant`)
+    :type role: string
+    :param pledge: The amount the user has pledged to the campaign (optional).
+    :type pledge: Decimal
+
     :raises: :class:`pooldlib.exceptions.InvalidGoalParticipationNameError`
              :class:`pooldlib.exceptions.DuplicateCampaignGoalUserAssociationError`
     """
@@ -650,7 +679,7 @@ def associate_user_with_goal(campaign_goal, user, participation, pledge=None):
     return cga
 
 
-def update_user_goal_association(campaign_goal, user, participation):
+def update_user_goal_association(campaign_goal, user, participation=None, pledge=None):
     """Update a given user's association with ``campaign_goal``. The association will be
     described by ``participation``, which can be one of 'opted-in' and 'opted-out', 'participating',
     'nonparticipating'. The values 'participating' and 'nonparticipating' should only be used
@@ -664,8 +693,22 @@ def update_user_goal_association(campaign_goal, user, participation):
                                             .filter_by(campaign_goal=campaign_goal)\
                                             .filter_by(user=user)\
                                             .first()
+    if not cga:
+        msg = "User %s is not associated with goals for campaign %s. Please create "\
+              "one with campaign.associate_user()."
+        raise UnknownCampaignGoalAssociationError(msg)
 
-    if cga.update_field(participation=participation):
+    updated = False
+    if participation is not None:
+        updated = cga.update_field('participation', participation)
+    if pledge is not None:
+        if cga.pledge is not None:
+            msg = "User %s has previously contributed to campaign '%s'"
+            msg %= (user.username, campaign_goal.campaign.name)
+            raise PreviousUserContributionError(msg)
+        updated = cga.update_field('pledge', pledge)
+
+    if updated:
         with transaction_session() as session:
             session.add(cga)
             try:
