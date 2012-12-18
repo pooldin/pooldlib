@@ -37,6 +37,7 @@ class ExternalLedger(common.LedgerModel):
                        db.ForeignKey('fee.id'),
                        nullable=True)
     fee = db.relationship('Fee', backref='external_ledger_entries', lazy='select')
+    full_name = db.Column(db.String(255), nullable=True)
 
 
 class CampaignGoalLedger(common.LedgerModel):
