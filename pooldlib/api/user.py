@@ -578,7 +578,7 @@ def associate_stripe_authorization_code(user, auth_code, stripe_private_key, for
            stripe_user_grant_scope=user_data['scope'])
 
 
-def payment_to_campaign(user, campaign, amount, currency, fees, note=None, goal=None):
+def payment_to_campaign(user, campaign, amount, currency, fees, note=None, goal=None, full_name=None):
     """Use this function to make a payment to the 'organizer' of 'campaign'.
     While we are actively not holding money, this method should be used for any
     and all money related transactions in which funds are being directed to a
@@ -640,7 +640,8 @@ def payment_to_campaign(user, campaign, amount, currency, fees, note=None, goal=
                                     stripe_ref_number,
                                     currency,
                                     credit=txn_dict['charge']['final'],
-                                    id=deposit_id)
+                                    id=deposit_id,
+                                    full_name=full_name)
     for fee in fees:
         fee_amount = [f['fee'] for f in txn_dict['fees'] if f['name'] == fee.name][0]
         # External Ledger for ``user`` for ``debit=fee_amount``

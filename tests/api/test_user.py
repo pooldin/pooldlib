@@ -903,7 +903,8 @@ class TestPaymentToCampaign(PooldLibPostgresBaseTest):
                                             self.campaign,
                                             amount,
                                             self.currency,
-                                            fees=(self.stripe_fee, self.poold_fee))
+                                            fees=(self.stripe_fee, self.poold_fee),
+                                            full_name="Imalittle Teapot")
         deposit_id, withdrawal_id = ldgr_ids
 
         user_txn = TransactionModel.query.filter_by(id=deposit_id)\
@@ -917,6 +918,7 @@ class TestPaymentToCampaign(PooldLibPostgresBaseTest):
         assert_true(user_txn.debit is None)
         assert_equal(Decimal('106.3900'), dpt_ldgrs.credit)
         assert_true(dpt_ldgrs.debit is None)
+        assert_equal("Imalittle Teapot", dpt_ldgrs.full_name)
 
         org_txn = TransactionModel.query.filter_by(id=withdrawal_id)\
                                         .filter_by(balance_id=self.organizer_balance.id)\
@@ -929,12 +931,14 @@ class TestPaymentToCampaign(PooldLibPostgresBaseTest):
                                                .first()
         assert_equal(Decimal('3.3900'), stripe_ldgr.debit)
         assert_true(stripe_ldgr.credit is None)
+        assert_true(stripe_ldgr.full_name is None)
 
         poold_ldgr = ExternalLedgerModel.query.filter_by(record_id=deposit_id)\
                                               .filter_by(fee_id=self.poold_fee.id)\
                                               .first()
         assert_equal(Decimal('3.0000'), poold_ldgr.debit)
         assert_true(poold_ldgr.credit is None)
+        assert_true(poold_ldgr.full_name is None)
 
 
 class TestPaymentToCampaignGoal(PooldLibPostgresBaseTest):

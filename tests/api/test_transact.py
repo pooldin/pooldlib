@@ -22,11 +22,52 @@ from tests.base import PooldLibPostgresBaseTest
 # TODO :: Transaction related tests need to be fixed!
 
 
+class TestExternalLedgerEntryWithFullName(PooldLibPostgresBaseTest):
+
+    def setUp(self):
+        super(TestExternalLedgerEntryWithFullName, self).setUp()
+        self.currency = CurrencyModel.query.filter_by(code='USD').first()
+        self.fee = FeeModel.query.get(1)
+
+        n = uuid().hex
+        self.user = self.create_user(n, '%s %s' % (n[:16], n[16:]))
+        self.user_balance = self.create_balance(user=self.user, currency_code='USD')
+
+        self.campaign = self.create_campaign(uuid().hex, uuid().hex)
+        self.campaign_balance = self.create_balance(campaign=self.campaign, currency_code='USD')
+
+    def test_external_entry_no_name(self):
+        t = Transact()
+        t.external_ledger(self.user,
+                          'test-party',
+                          'test-reference-number-test_external_entry_no_name',
+                          self.currency,
+                          credit=Decimal('25.0000'))
+        t.execute()
+        txns = ExternalLedgerModel.query.filter_by(record_id=t.id).all()
+        assert_equal(1, len(txns))
+        txn = txns[0]
+        assert_true(txn.full_name is None)
+
+    def test_external_entry_with_name(self):
+        t = Transact()
+        t.external_ledger(self.user,
+                          'test-party',
+                          'test-reference-number-test_external_entry_with_name',
+                          self.currency,
+                          credit=Decimal('25.0000'),
+                          full_name="Imalittle Teapot")
+        t.execute()
+        txns = ExternalLedgerModel.query.filter_by(record_id=t.id).all()
+        assert_equal(1, len(txns))
+        txn = txns[0]
+        assert_equal("Imalittle Teapot", txn.full_name)
+
+
 class TestUserCampaignGoalTransfer(PooldLibPostgresBaseTest):
 
     def setUp(self):
         super(TestUserCampaignGoalTransfer, self).setUp()
-        self.currency = CurrencyModel.query.filter_by(code='USD').first()
         self.currency = CurrencyModel.query.filter_by(code='USD').first()
         self.fee = FeeModel.query.get(1)
 

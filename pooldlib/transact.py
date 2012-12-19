@@ -178,7 +178,8 @@ class Transact(object):
         elif debit is not None:
             self._transaction_debit(txn_balance, debit, fee=fee, id=id)
 
-    def external_ledger(self, balance_holder, processor, reference_number, currency, debit=None, credit=None, fee=None, id=None):
+    def external_ledger(self, balance_holder, processor, reference_number, currency,
+                        debit=None, credit=None, fee=None, id=None, full_name=None):
         balance = balance_holder.balance_for_currency(currency, for_update=True)
         el = self._new_external_ledger(processor,
                                        balance.currency,
@@ -187,7 +188,8 @@ class Transact(object):
                                        fee,
                                        credit=credit,
                                        debit=debit,
-                                       id=id)
+                                       id=id,
+                                       full_name=full_name)
         self._external_ledger_items.append(el)
 
     def verify(self):
@@ -313,7 +315,8 @@ class Transact(object):
             il.debit = debit
         return il
 
-    def _new_external_ledger(self, processor, currency, record_table, reference_number, fee, debit=None, credit=None, id=None):
+    def _new_external_ledger(self, processor, currency, record_table, reference_number,
+                             fee, debit=None, credit=None, id=None, full_name=None):
         el = ExternalLedgerModel()
         el.record_id = id or self.id
         el.record_table = record_table
@@ -321,6 +324,7 @@ class Transact(object):
         el.processor = processor
         el.currency = currency
         el.fee = fee
+        el.full_name = full_name
 
         if credit is not None:
             el.credit = credit
